@@ -1,6 +1,6 @@
 const { User, Category, Subcategory, Product } = require("../models");
 const { sanitizeUser } = require("../helpers/utils");
-const { hashPassword } = require("../middleware/auth");
+const { hashPassword, comparePassword } = require("../middleware/auth");
 
 exports.getAdminProfile = async (req, res) => {
     try {
@@ -16,7 +16,7 @@ exports.getAdminProfile = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch admin profile",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -28,20 +28,29 @@ exports.updateAdminProfile = async (req, res) => {
             return res.status(404).json({ message: "Admin profile not found" });
         }
 
-        if (req.body.email && req.body.email !== admin.email) {
-            const existingEmail = await User.findOne({ where: { email: req.body.email } });
+        const { name, email, password, currentPassword, phone } = req.body;
+
+        if (email && email !== admin.email) {
+            const existingEmail = await User.findOne({ where: { email } });
             if (existingEmail) {
                 return res.status(409).json({ message: "Email already in use" });
             }
         }
 
-        const updateData = { ...req.body };
-        delete updateData.id;
-        delete updateData.role;
-        delete updateData.status;
+        const updateData = {};
+        if (name !== undefined) updateData.name = name;
+        if (email !== undefined) updateData.email = email;
+        if (phone !== undefined) updateData.phone = phone;
 
-        if (updateData.password) {
-            updateData.password = await hashPassword(updateData.password);
+        if (password) {
+            if (!currentPassword) {
+                return res.status(400).json({ message: "currentPassword is required to change your password" });
+            }
+            const isMatch = await comparePassword(currentPassword, admin.password);
+            if (!isMatch) {
+                return res.status(401).json({ message: "Incorrect current password" });
+            }
+            updateData.password = await hashPassword(password);
         }
 
         await admin.update(updateData);
@@ -53,7 +62,7 @@ exports.updateAdminProfile = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to update admin profile",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -76,7 +85,7 @@ exports.approveSeller = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to approve seller",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -98,7 +107,7 @@ exports.suspendSeller = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to suspend seller",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -148,7 +157,7 @@ exports.getOverview = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch application overview",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -163,7 +172,7 @@ exports.getAllAdmins = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch admins",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -181,7 +190,7 @@ exports.getAdminById = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch admin",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -209,7 +218,7 @@ exports.updateAdmin = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to update admin",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -225,7 +234,7 @@ exports.suspendAdmin = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to suspend admin",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -241,7 +250,7 @@ exports.unsuspendAdmin = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to unsuspend admin",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -267,7 +276,7 @@ exports.getAllUsers = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch users",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -290,7 +299,7 @@ exports.getUserById = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch user",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -311,7 +320,7 @@ exports.blockUser = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to block user",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -332,7 +341,7 @@ exports.unblockUser = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to unblock user",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -350,7 +359,7 @@ exports.softDeleteUser = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to delete user",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -375,7 +384,7 @@ exports.restoreUser = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to restore user",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -393,7 +402,7 @@ exports.forceDeleteUser = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to permanently delete user",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -416,7 +425,7 @@ exports.getAllSellers = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch sellers",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -436,7 +445,7 @@ exports.getSellerById = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch seller",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -472,7 +481,7 @@ exports.updateSellerById = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to update seller",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -490,7 +499,7 @@ exports.deleteSellerById = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to delete seller",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -515,7 +524,7 @@ exports.restoreSeller = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to restore seller",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -533,7 +542,7 @@ exports.forceDeleteSeller = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to permanently delete seller",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -556,7 +565,7 @@ exports.getAllCategories = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch categories",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -582,7 +591,7 @@ exports.getAllSubcategories = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch subcategories",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -612,7 +621,7 @@ exports.getCategoryById = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch category",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -640,7 +649,7 @@ exports.getSubcategoryById = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch subcategory",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };

@@ -33,7 +33,7 @@ exports.registerSeller = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to create seller",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -53,7 +53,7 @@ exports.getSellerProfile = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch profile",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -100,7 +100,7 @@ exports.updateSellerProfile = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to update profile",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -118,7 +118,7 @@ exports.deleteSellerProfile = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to delete profile",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };

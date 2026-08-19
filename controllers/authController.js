@@ -46,7 +46,7 @@ exports.loginUser = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to login",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -91,7 +91,7 @@ exports.forgotPassword = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to process forgot password request",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -135,7 +135,7 @@ exports.resetPassword = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to reset password",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };

@@ -33,7 +33,7 @@ exports.registerUser = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to create user",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -52,7 +52,7 @@ exports.getProfile = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch profile",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -98,7 +98,7 @@ exports.updateProfile = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to update profile",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -116,7 +116,7 @@ exports.deleteProfile = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to delete profile",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };

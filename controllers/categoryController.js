@@ -31,7 +31,7 @@ exports.createCategory = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to create category",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -44,7 +44,7 @@ exports.getAllCategories = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch categories",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -74,7 +74,7 @@ exports.getCategoryById = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch category",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -99,7 +99,7 @@ exports.updateCategory = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to update category",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -123,7 +123,7 @@ exports.deleteCategory = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to delete category",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };

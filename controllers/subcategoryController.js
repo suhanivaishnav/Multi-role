@@ -28,7 +28,7 @@ exports.createSubcategory = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to create subcategory",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -49,7 +49,7 @@ exports.getAllSubcategories = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch subcategories",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -79,7 +79,7 @@ exports.getSubcategoryById = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch subcategory",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -114,7 +114,7 @@ exports.updateSubcategory = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to update subcategory",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -138,7 +138,7 @@ exports.deleteSubcategory = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to delete subcategory",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
