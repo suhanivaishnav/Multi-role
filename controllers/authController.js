@@ -1,6 +1,7 @@
 const { User } = require("../models");
 const { Op } = require("sequelize");
 const crypto = require("crypto");
+const { sendPasswordResetEmail } = require("../helpers/email");
 const { comparePassword, generateToken, hashPassword } = require("../middleware/auth");
 
 exports.loginUser = async (req, res) => {
@@ -77,11 +78,15 @@ exports.forgotPassword = async (req, res) => {
             resetPasswordExpires: tokenExpires
         });
 
-        // In a real application, you would send this via email.
-        // For testing, we will just return the raw token in the response.
+        // Send the real email
+        try {
+            await sendPasswordResetEmail(req.body.email, resetToken);
+        } catch (emailError) {
+            console.error("Failed to dispatch email, but token was generated in DB.");
+        }
+
         return res.status(200).json({
-            message: "If that email is registered, a password reset token has been generated.",
-            resetToken // REMOVE this in production! Send via email instead.
+            message: "If that email is registered, a password reset token has been sent to your inbox."
         });
     } catch (error) {
         return res.status(500).json({

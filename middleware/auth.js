@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { User } = require('../models');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -13,14 +14,7 @@ const hashPassword = async (password) => {
 //Supports plain text comparison as a fallback for initial seed data
 const comparePassword = async (plainPassword, storedPassword) => {
     if (!storedPassword || !plainPassword) return false;
-
-    // Check if storedPassword is a bcrypt hash (starts with $2a$, $2b$, or $2y$)
-    if (storedPassword.startsWith('$2a$') || storedPassword.startsWith('$2b$') || storedPassword.startsWith('$2y$')) {
-        return await bcrypt.compare(plainPassword, storedPassword);
-    }
-
-    // Fallback for plain text passwords in seed data
-    return plainPassword === storedPassword;
+    return await bcrypt.compare(plainPassword, storedPassword);
 };
 
 //Generate a JWT token for an authenticated user/admin/seller
@@ -37,12 +31,24 @@ const authenticate = (req, res, next) => {
         return res.status(401).json({ message: 'Authentication token required' });
     }
 
-    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    jwt.verify(token, JWT_SECRET, async (err, decoded) => {
         if (err) {
             return res.status(403).json({ message: 'Invalid or expired token' });
         }
-        req.user = decoded;
-        next();
+
+        try {
+            const user = await User.findByPk(decoded.id);
+            if (!user) {
+                return res.status(401).json({ message: 'Account no longer exists' });
+            }
+            if (user.status !== "Active") {
+                return res.status(403).json({ message: `Account is ${user.status.toLowerCase()}` });
+            }
+            req.user = decoded;
+            next();
+        } catch (dbErr) {
+            return res.status(500).json({ message: 'Authentication error' });
+        }
     });
 };
 

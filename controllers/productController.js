@@ -307,8 +307,21 @@ exports.getProductById = async (req, res) => {
             include: getProductIncludes()
         });
 
-        if (!product || product.status !== "Active") {
-            return res.status(404).json({ message: "Product not found or not available" });
+        if (!product) {
+            return res.status(404).json({ message: "Product not found" });
+        }
+
+        if (product.status !== "Active") {
+            const userType = getUserRoleCategory(req.user);
+            
+            if (userType === "Guest" || userType === "User") {
+                return res.status(404).json({ message: "Product not found or not available" });
+            }
+            
+            if (userType === "Seller" && product.sellerId !== req.user.id) {
+                return res.status(404).json({ message: "Product not found or not available" });
+            }
+            // Admins pass through and can see all statuses
         }
 
         return res.status(200).json(product);

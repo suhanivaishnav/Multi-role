@@ -74,6 +74,7 @@ exports.updateSellerProfile = async (req, res) => {
 
         const updateData = { ...req.body };
         delete updateData.id;
+        delete updateData.role;
         delete updateData.status;
         delete updateData.approvedByAdminId;
 

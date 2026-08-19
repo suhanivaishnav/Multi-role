@@ -46,58 +46,27 @@ multi-role-api/
 
 ---
 
-## 🗄️ Database Schemas & Models
+The architecture now uses a **unified `Users` table** across all roles, separated by a `role` enum. This simplifies queries and relationships while utilizing strict role-based access control to enforce permissions.
 
-The architecture explicitly separates distinct user roles into dedicated database tables rather than relying on a generic `role` string on a single table.
-
-### 1. User (`Users` Table)
-Represents standard end-users / customers. Includes soft delete functionality (`paranoid: true`).
+### Unified `Users` Table
+Includes soft delete functionality (`paranoid: true`).
 
 | Field | Data Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
 | `id` | `INTEGER` | Primary Key, Auto Increment | Unique User ID |
+| `role` | `ENUM` | Not Null, Default 'user' | `'user'`, `'seller'`, `'admin'`, `'superadmin'` |
 | `name` | `STRING` | Optional | User's full name |
 | `email` | `STRING` | Unique, Not Null | Account email address |
 | `password` | `STRING` | Not Null | Hashed account password |
 | `phone` | `STRING` | Optional | User's contact number |
-| `status` | `ENUM('Active', 'Blocked')` | Default: `'Active'`, Not Null | Account status flag |
+| `businessName` | `STRING` | Optional | For sellers only |
+| `approvedByAdminId` | `INTEGER` | Foreign Key -> `Users.id` | For sellers: The admin who approved them |
+| `status` | `ENUM` | Default: `'Pending'` for sellers, `'Active'` for others | `'Active'`, `'Blocked'`, `'Pending'`, `'Suspended'` |
 | `createdAt` | `DATE` | Not Null | Record creation timestamp |
 | `updatedAt` | `DATE` | Not Null | Record update timestamp |
 | `deletedAt` | `DATE` | Optional | Soft deletion timestamp (`paranoid: true`) |
-
----
-
-### 2. Admin (`Admins` Table)
-Represents administrative accounts responsible for platform governance and approving seller registrations.
-
-| Field | Data Type | Constraints | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `INTEGER` | Primary Key, Auto Increment | Unique Admin ID |
-| `name` | `STRING` | Not Null | Admin's full name |
-| `email` | `STRING` | Unique, Not Null | Admin login email |
-| `password` | `STRING` | Not Null | Hashed admin login password |
-| `adminType` | `ENUM('SuperAdmin', 'Admin')` | Default: `'Admin'`, Not Null | Hierarchy privilege level |
-| `status` | `ENUM('Active', 'Suspended')` | Default: `'Active'`, Not Null | Admin account status |
-| `createdAt` | `DATE` | Not Null | Record creation timestamp |
-| `updatedAt` | `DATE` | Not Null | Record update timestamp |
-
----
-
-### 3. Seller (`Sellers` Table)
-Represents merchant / seller accounts that require admin approval before activation.
-
-| Field | Data Type | Constraints | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `INTEGER` | Primary Key, Auto Increment | Unique Seller ID |
-| `name` | `STRING` | Optional | Primary seller contact name |
-| `email` | `STRING` | Unique, Not Null | Seller contact email |
-| `password` | `STRING` | Not Null | Hashed seller account password |
-| `businessName` | `STRING` | Optional | Registered business/shop name |
-| `phone` | `STRING` | Optional | Business contact number |
-| `status` | `ENUM('Pending', 'Approved', 'Suspended')` | Default: `'Pending'`, Not Null | Seller approval lifecycle state |
-| `approvedByAdminId` | `INTEGER` | Foreign Key -> `Admins.id` | Admin who reviewed/approved the seller |
-| `createdAt` | `DATE` | Not Null | Record creation timestamp |
-| `updatedAt` | `DATE` | Not Null | Record update timestamp |
+| `resetPasswordToken` | `STRING` | Optional | Token for password resets |
+| `resetPasswordExpires` | `DATE` | Optional | Expiry for password reset token |
 
 ---
 
@@ -106,37 +75,22 @@ Represents merchant / seller accounts that require admin approval before activat
 ```mermaid
 erDiagram
     ADMIN ||--o{ SELLER : "approves / manages"
+    USER ||--o{ PRODUCT : "owns"
     USER {
         int id PK
-        string name
+        string role
         string email UK
-        string password
-        string phone
-        string status
-        datetime deletedAt
-    }
-    ADMIN {
-        int id PK
-        string name
-        string email UK
-        string password
-        string adminType
         string status
     }
-    SELLER {
+    PRODUCT {
         int id PK
-        string name
-        string email UK
-        string password
-        string businessName
-        string phone
         string status
-        int approvedByAdminId FK
+        int sellerId FK
     }
 ```
 
-- **`Admin` → `Seller`**: One-to-Many (`Admin.hasMany(Seller, { foreignKey: 'approvedByAdminId' })`).
-- **`Seller` → `Admin`**: Many-to-One (`Seller.belongsTo(Admin, { foreignKey: 'approvedByAdminId' })`).
+- **`User (Admin)` → `User (Seller)`**: Self-referential One-to-Many (`approvedByAdminId`).
+- **`User (Seller)` → `Product`**: One-to-Many (`Product.belongsTo(User, { as: 'seller' })`).
 
 ---
 

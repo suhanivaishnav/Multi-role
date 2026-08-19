@@ -456,6 +456,8 @@ exports.updateSellerById = async (req, res) => {
         }
 
         const updateData = { ...req.body };
+        delete updateData.id;
+        delete updateData.role;
 
         if (updateData.password) {
             updateData.password = await hashPassword(updateData.password);
