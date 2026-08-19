@@ -65,7 +65,7 @@ exports.updateSellerProfile = async (req, res) => {
             return res.status(404).json({ message: "Seller profile not found" });
         }
 
-        const { name, email, password, currentPassword, phone, businessName } = req.body;
+        const { name, email, password, currentPassword, phone } = req.body;
 
         if (email && email !== seller.email) {
             const existingEmail = await User.findOne({ where: { email } });
@@ -78,7 +78,6 @@ exports.updateSellerProfile = async (req, res) => {
         if (name !== undefined) updateData.name = name;
         if (email !== undefined) updateData.email = email;
         if (phone !== undefined) updateData.phone = phone;
-        if (businessName !== undefined) updateData.businessName = businessName;
 
         if (password) {
             if (!currentPassword) {

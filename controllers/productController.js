@@ -99,7 +99,7 @@ exports.createProduct = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to create product",
-            error: "An internal server error occurred"
+            error: error.message
         });
     }
 };
@@ -140,7 +140,7 @@ exports.getMyProducts = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch seller products",
-            error: "An internal server error occurred"
+            error: error.message
         });
     }
 };
@@ -174,7 +174,7 @@ exports.getAllProductsAdmin = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch all products for admin",
-            error: "An internal server error occurred"
+            error: error.message
         });
     }
 };
@@ -197,7 +197,7 @@ exports.getProductsByCategory = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch category products",
-            error: "An internal server error occurred"
+            error: error.message
         });
     }
 };
@@ -220,7 +220,7 @@ exports.getProductsBySubcategory = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch subcategory products",
-            error: "An internal server error occurred"
+            error: error.message
         });
     }
 };
@@ -289,7 +289,7 @@ exports.getAllProducts = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch products",
-            error: "An internal server error occurred"
+            error: error.message
         });
     }
 };
@@ -321,7 +321,7 @@ exports.getProductById = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch product",
-            error: "An internal server error occurred"
+            error: error.message
         });
     }
 };
@@ -382,7 +382,7 @@ exports.updateProduct = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to update product",
-            error: "An internal server error occurred"
+            error: error.message
         });
     }
 };
@@ -407,7 +407,7 @@ exports.approveProduct = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to approve product",
-            error: "An internal server error occurred"
+            error: error.message
         });
     }
 };
@@ -432,7 +432,7 @@ exports.rejectProduct = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to reject product",
-            error: "An internal server error occurred"
+            error: error.message
         });
     }
 };
@@ -466,7 +466,7 @@ exports.updateProductStatus = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to update product status",
-            error: "An internal server error occurred"
+            error: error.message
         });
     }
 };
@@ -494,7 +494,7 @@ exports.deleteProduct = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to delete product",
-            error: "An internal server error occurred"
+            error: error.message
         });
     }
 };

@@ -127,10 +127,12 @@ exports.getOverview = async (req, res) => {
             Product.count({ where: { status: 'Rejected' } })
         ]);
 
+        const { limit, offset } = req.pagination;
+
         const [users, sellers, categories] = await Promise.all([
-            User.findAll({ where: { role: 'user' }, attributes: { exclude: ["password"] } }),
-            User.findAll({ where: { role: 'seller' }, attributes: { exclude: ["password"] } }),
-            Category.findAll({ include: [{ model: Subcategory, as: "subcategories" }] })
+            User.findAll({ where: { role: 'user' }, attributes: { exclude: ["password"] }, limit, offset }),
+            User.findAll({ where: { role: 'seller' }, attributes: { exclude: ["password"] }, limit, offset }),
+            Category.findAll({ include: [{ model: Subcategory, as: "subcategories" }], limit, offset })
         ]);
 
         const overviewData = {

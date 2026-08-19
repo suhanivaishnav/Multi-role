@@ -43,11 +43,11 @@ router.patch("/sellers/:id/restore", authenticateToken, requireRole("Admin", "Su
 router.delete("/sellers/:id/force", authenticateToken, requireRole("SuperAdmin"), adminController.forceDeleteSeller);
 
 // GET APPLICATION OVERVIEW / DASHBOARD (ADMIN ACCESS)✅
-router.get("/overview", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.getOverview);
+router.get("/overview", authenticateToken, requireRole("Admin", "SuperAdmin"), paginate, adminController.getOverview);
 
 //CATEGORIES
 // GET ALL CATEGORIES✅
-router.get("/categories", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.getAllCategories);
+router.get("/categories", authenticateToken, requireRole("Admin", "SuperAdmin"), paginate, adminController.getAllCategories);
 
 // CREATE CATEGORY✅
 router.post("/categories", authenticateToken, requireRole("Admin", "SuperAdmin"), categoryController.createCategory);
@@ -64,7 +64,7 @@ router.delete("/categories/:id", authenticateToken, requireRole("Admin", "SuperA
 
 //SUBCATEGORY
 // GET ALL SUBCATEGORIES✅
-router.get("/subcategories", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.getAllSubcategories);
+router.get("/subcategories", authenticateToken, requireRole("Admin", "SuperAdmin"), paginate, adminController.getAllSubcategories);
 
 // CREATE SUBCATEGORY✅
 router.post("/subcategories", authenticateToken, requireRole("Admin", "SuperAdmin"), subcategoryController.createSubcategory);
@@ -132,7 +132,7 @@ router.delete("/users/:id/force", authenticateToken, requireRole("SuperAdmin"), 
 // --- ADMIN SPECIFIC ROUTES (MUST BE AT BOTTOM TO PREVENT ROUTE COLLISIONS) ---
 
 // GET ALL ADMINS✅
-router.get("/", authenticateToken, requireRole("SuperAdmin"), adminController.getAllAdmins);
+router.get("/", authenticateToken, requireRole("SuperAdmin"), paginate, adminController.getAllAdmins);
 
 // GET ONE ADMIN BY ID✅
 router.get("/:id", authenticateToken, requireRole("SuperAdmin"), adminController.getAdminById);
