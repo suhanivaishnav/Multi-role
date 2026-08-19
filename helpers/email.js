@@ -11,7 +11,7 @@ const transporter = nodemailer.createTransport({
 
 const sendPasswordResetEmail = async (toEmail, resetToken) => {
     const mailOptions = {
-        from: '"Multi-Role API Support" <[EMAIL_ADDRESS]>',
+        from: `"Multi-Role API Support" <${process.env.SMTP_USER}>`,
         to: toEmail,
         subject: 'Password Reset Request',
         html: `

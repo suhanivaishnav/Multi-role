@@ -44,7 +44,7 @@ const authenticate = (req, res, next) => {
             if (user.status !== "Active") {
                 return res.status(403).json({ message: `Account is ${user.status.toLowerCase()}` });
             }
-            req.user = decoded;
+            req.user = { ...decoded, role: user.role };
             next();
         } catch (dbErr) {
             return res.status(500).json({ message: 'Authentication error' });

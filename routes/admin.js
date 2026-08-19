@@ -40,7 +40,7 @@ router.delete("/sellers/:id", authenticateToken, requireRole("Admin", "SuperAdmi
 router.patch("/sellers/:id/restore", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.restoreSeller);
 
 //FORCE DELETE SELLER✅
-router.delete("/sellers/:id/force", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.forceDeleteSeller);
+router.delete("/sellers/:id/force", authenticateToken, requireRole("SuperAdmin"), adminController.forceDeleteSeller);
 
 // GET APPLICATION OVERVIEW / DASHBOARD (ADMIN ACCESS)✅
 router.get("/overview", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.getOverview);
@@ -127,7 +127,7 @@ router.delete("/users/:id", authenticateToken, requireRole("Admin", "SuperAdmin"
 router.patch("/users/:id/restore", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.restoreUser);
 
 // FORCE (PERMANENT) DELETE USER✅
-router.delete("/users/:id/force", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.forceDeleteUser);
+router.delete("/users/:id/force", authenticateToken, requireRole("SuperAdmin"), adminController.forceDeleteUser);
 
 // --- ADMIN SPECIFIC ROUTES (MUST BE AT BOTTOM TO PREVENT ROUTE COLLISIONS) ---
 

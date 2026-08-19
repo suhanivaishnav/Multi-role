@@ -3,5 +3,7 @@ exports.sanitizeUser = (user) => {
     if (!user) return user;
     const userJson = user.toJSON ? user.toJSON() : { ...user };
     delete userJson.password;
+    delete userJson.resetPasswordToken;
+    delete userJson.resetPasswordExpires;
     return userJson;
 };
