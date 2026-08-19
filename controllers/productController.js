@@ -11,14 +11,7 @@ const getProductIncludes = () => [
     {
         model: Subcategory,
         as: "subcategory",
-        attributes: ["id", "name", "categoryId", "description"],
-        include: [
-            {
-                model: Category,
-                as: "category",
-                attributes: ["id", "name", "description"]
-            }
-        ]
+        attributes: [] // Empty array prevents it from showing up in the JSON response, but allows SQL JOINS for categoryId filtering
     }
 ];
 
