@@ -20,9 +20,9 @@ exports.loginUser = async (req, res) => {
         if (user.status === "Blocked") {
             return res.status(403).json({ message: "Account is blocked" });
         }
-        
+
         if (user.status === "Pending") {
-             return res.status(403).json({ message: "Account is pending approval" });
+            return res.status(403).json({ message: "Account is pending approval" });
         }
 
         const isValid = await comparePassword(password, user.password);
@@ -66,10 +66,10 @@ exports.forgotPassword = async (req, res) => {
 
         // Generate a random token
         const resetToken = crypto.randomBytes(32).toString("hex");
-        
+
         // Hash it before saving to DB
         const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
-        
+
         // Set expiry for 1 hour from now
         const tokenExpires = new Date(Date.now() + 60 * 60 * 1000);
 

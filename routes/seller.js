@@ -5,7 +5,7 @@ const sellerController = require("../controllers/sellerController");
 const productController = require("../controllers/productController");
 const paginate = require("../middleware/pagination");
 
-// 1. REGISTER SELLER (POST /sellers/register & POST /sellers/)✅
+//REGISTER SELLER (POST /sellers/register & POST /sellers/)✅
 router.post("/register", sellerController.registerSeller);
 router.post("/", sellerController.registerSeller);
 
