@@ -1,6 +1,6 @@
 const { User } = require("../models");
 const { sanitizeUser } = require("../helpers/utils");
-const { hashPassword } = require("../middleware/auth");
+const { hashPassword, comparePassword } = require("../middleware/auth");
 
 exports.registerSeller = async (req, res) => {
     try {
@@ -65,21 +65,30 @@ exports.updateSellerProfile = async (req, res) => {
             return res.status(404).json({ message: "Seller profile not found" });
         }
 
-        if (req.body.email && req.body.email !== seller.email) {
-            const existingEmail = await User.findOne({ where: { email: req.body.email } });
+        const { name, email, password, currentPassword, phone, businessName } = req.body;
+
+        if (email && email !== seller.email) {
+            const existingEmail = await User.findOne({ where: { email } });
             if (existingEmail) {
                 return res.status(409).json({ message: "Email already in use by another seller" });
             }
         }
 
-        const updateData = { ...req.body };
-        delete updateData.id;
-        delete updateData.role;
-        delete updateData.status;
-        delete updateData.approvedByAdminId;
+        const updateData = {};
+        if (name !== undefined) updateData.name = name;
+        if (email !== undefined) updateData.email = email;
+        if (phone !== undefined) updateData.phone = phone;
+        if (businessName !== undefined) updateData.businessName = businessName;
 
-        if (updateData.password) {
-            updateData.password = await hashPassword(updateData.password);
+        if (password) {
+            if (!currentPassword) {
+                return res.status(400).json({ message: "currentPassword is required to change your password" });
+            }
+            const isMatch = await comparePassword(currentPassword, seller.password);
+            if (!isMatch) {
+                return res.status(401).json({ message: "Incorrect current password" });
+            }
+            updateData.password = await hashPassword(password);
         }
 
         await seller.update(updateData);
