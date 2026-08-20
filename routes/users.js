@@ -3,20 +3,25 @@ const router = express.Router();
 const { authenticateToken, requireRole } = require("../middleware/auth");
 const userController = require("../controllers/userController");
 
-// POST /users/register & POST /users/✅
+// ─── PUBLIC ROUTES (no auth required) ────────────────────────────────────────
+
+// POST /users/register ✅
 router.post("/register", userController.registerUser);
 router.post("/", userController.registerUser);
 
-// --- PROTECTED USER PROFILE ROUTES ---
+// ─── BASELINE: All routes below require a valid token + User role ─────────────
+router.use(authenticateToken, requireRole("User"));
 
-// GET /users/profile - Get logged-in user profile✅
-router.get("/profile", authenticateToken, requireRole("User"), userController.getProfile);
+// ─── USER PROFILE ─────────────────────────────────────────────────────────────
 
-// PUT /users/profile & PATCH /users/profile - Update logged-in user profile✅
-router.put("/profile", authenticateToken, requireRole("User"), userController.updateProfile);
-router.patch("/profile", authenticateToken, requireRole("User"), userController.updateProfile);
+// GET /users/profile ✅
+router.get("/profile", userController.getProfile);
 
-// DELETE /users/profile - Delete (soft-delete) logged-in user profile✅
-router.delete("/profile", authenticateToken, requireRole("User"), userController.deleteProfile);
+// PUT|PATCH /users/profile ✅
+router.put("/profile", userController.updateProfile);
+router.patch("/profile", userController.updateProfile);
+
+// DELETE /users/profile (soft-delete) ✅
+router.delete("/profile", userController.deleteProfile);
 
 module.exports = router;
