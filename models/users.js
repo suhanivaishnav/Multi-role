@@ -82,6 +82,11 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: "sellerId",
       as: "products"
     });
+
+    User.hasOne(models.Cart, {
+      foreignKey: "userId",
+      as: "cart"
+    });
   };
 
   return User;

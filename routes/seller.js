@@ -5,40 +5,43 @@ const sellerController = require("../controllers/sellerController");
 const productController = require("../controllers/productController");
 const paginate = require("../middleware/pagination");
 
-//REGISTER SELLER (POST /sellers/register & POST /sellers/)✅
+// ─── PUBLIC ROUTES (no auth required) ────────────────────────────────────────
+
+// POST /sellers/register ✅
 router.post("/register", sellerController.registerSeller);
 router.post("/", sellerController.registerSeller);
 
-// --- PROTECTED SELLER PROFILE ROUTES ---
+// ─── BASELINE: All routes below require a valid token + Seller role ───────────
+router.use(authenticateToken, requireRole("Seller"));
 
-// GET /sellers/profile - Get logged-in seller profile✅
-router.get("/profile", authenticateToken, requireRole("Seller"), sellerController.getSellerProfile);
+// ─── SELLER PROFILE ───────────────────────────────────────────────────────────
 
-// PUT /sellers/profile & PATCH /sellers/profile - Update logged-in seller profile✅
-router.put("/profile", authenticateToken, requireRole("Seller"), sellerController.updateSellerProfile);
-router.patch("/profile", authenticateToken, requireRole("Seller"), sellerController.updateSellerProfile);
+// GET /sellers/profile ✅
+router.get("/profile", sellerController.getSellerProfile);
 
-// DELETE /sellers/profile - Delete logged-in seller account✅
-router.delete("/profile", authenticateToken, requireRole("Seller"), sellerController.deleteSellerProfile);
+// PUT|PATCH /sellers/profile ✅
+router.put("/profile", sellerController.updateSellerProfile);
+router.patch("/profile", sellerController.updateSellerProfile);
 
-// --- PRODUCT MANAGEMENT (SELLER ONLY) ---
+// DELETE /sellers/profile ✅
+router.delete("/profile", sellerController.deleteSellerProfile);
 
-// GET SELLER'S OWN PRODUCTS✅(can filter by ?categoryId=5 and subcategory like this)
-router.get("/products", authenticateToken, requireRole("Seller"), paginate, productController.getMyProducts);
+// ─── PRODUCT MANAGEMENT ───────────────────────────────────────────────────────
 
-// (Pending products can be viewed using /products?status=Pending)
+// GET /sellers/products ✅  (filter: ?status=Pending, ?categoryId=5)
+router.get("/products", paginate, productController.getMyProducts);
 
-// GET SINGLE PRODUCT BY ID (SELLER'S OWN OR ANY ACTIVE)✅
-router.get("/products/:id", authenticateToken, requireRole("Seller"), productController.getProductById);
+// GET /sellers/products/:id ✅
+router.get("/products/:id", productController.getProductById);
 
-// CREATE PRODUCT✅
-router.post("/products", authenticateToken, requireRole("Seller"), productController.createProduct);
+// POST /sellers/products ✅
+router.post("/products", productController.createProduct);
 
-// UPDATE PRODUCT✅
-router.put("/products/:id", authenticateToken, requireRole("Seller"), productController.updateProduct);
-router.patch("/products/:id", authenticateToken, requireRole("Seller"), productController.updateProduct);
+// PUT|PATCH /sellers/products/:id ✅
+router.put("/products/:id", productController.updateProduct);
+router.patch("/products/:id", productController.updateProduct);
 
-// DELETE PRODUCT✅
-router.delete("/products/:id", authenticateToken, requireRole("Seller"), productController.deleteProduct);
+// DELETE /sellers/products/:id ✅
+router.delete("/products/:id", productController.deleteProduct);
 
 module.exports = router;

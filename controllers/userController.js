@@ -1,10 +1,11 @@
 const { User } = require("../models");
 const { sanitizeUser } = require("../helpers/utils");
-const { hashPassword, comparePassword } = require("../middleware/auth");
+const { hashPassword, comparePassword, generateToken } = require("../middleware/auth");
+const { syncGuestCart } = require("./cartController");
 
 exports.registerUser = async (req, res) => {
     try {
-        const { name, email, password, phone } = req.body;
+        const { name, email, password, phone, guestCart } = req.body;
 
         if (!name || !email || !password) {
             return res.status(400).json({ message: "Name, email, and password are required" });
@@ -26,9 +27,25 @@ exports.registerUser = async (req, res) => {
             status: "Active"
         });
 
+        // Generate token immediately so the client can use it right after registering
+        const token = generateToken({ id: user.id, role: user.role });
+
+        // Sync guest cart if provided
+        let cartSync = null;
+        if (guestCart && Array.isArray(guestCart) && guestCart.length > 0) {
+            try {
+                cartSync = await syncGuestCart(user.id, guestCart);
+            } catch (syncErr) {
+                console.error("Guest cart sync failed during registration:", syncErr);
+                // Non-blocking: registration still succeeds even if sync fails
+            }
+        }
+
         return res.status(201).json({
             message: "User registered successfully",
-            user: sanitizeUser(user)
+            token,
+            user: sanitizeUser(user),
+            ...(cartSync && { cartSync })
         });
     } catch (error) {
         return res.status(500).json({

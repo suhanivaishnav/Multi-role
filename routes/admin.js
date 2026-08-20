@@ -7,142 +7,150 @@ const subcategoryController = require("../controllers/subcategoryController");
 const productController = require("../controllers/productController");
 const paginate = require("../middleware/pagination");
 
-// --- PROTECTED ADMIN PROFILE ROUTES ---
+// ─── BASELINE: All routes below require a valid token + Admin or SuperAdmin role
+router.use(authenticateToken, requireRole("Admin", "SuperAdmin"));
 
-// GET /admins/profile - Get logged-in admin or superadmin profile✅
-router.get("/profile", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.getAdminProfile);
+// ─── ADMIN PROFILE ────────────────────────────────────────────────────────────
 
-// PUT /admins/profile & PATCH /admins/profile - Update logged-in admin or superadmin profile✅
-router.put("/profile", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.updateAdminProfile);
-router.patch("/profile", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.updateAdminProfile);
+// GET /admins/profile ✅
+router.get("/profile", adminController.getAdminProfile);
 
-//SELLER MANAGEMENT 
-// APPROVE SELLER WORKFLOW (PATCH /admins/sellers/:id/approve & PATCH /admins/sellers/:sellerId/approve)✅
-router.patch("/sellers/:id/approve", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.approveSeller);
+// PUT|PATCH /admins/profile ✅
+router.put("/profile", adminController.updateAdminProfile);
+router.patch("/profile", adminController.updateAdminProfile);
 
-// SUSPEND SELLER WORKFLOW (PATCH /admins/sellers/:id/suspend & PATCH /admins/sellers/:sellerId/suspend)✅
-router.patch("/sellers/:id/suspend", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.suspendSeller);
+// ─── SELLER MANAGEMENT ────────────────────────────────────────────────────────
 
-// GET ALL SELLERS✅ (Pending sellers can be viewed using /sellers?status=Pending)
-router.get("/sellers", authenticateToken, requireRole("Admin", "SuperAdmin"), paginate, adminController.getAllSellers);
+// GET /admins/sellers ✅  (filter: ?status=Pending)
+router.get("/sellers", paginate, adminController.getAllSellers);
 
-// GET ONE SELLER BY ID✅
-router.get("/sellers/:id", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.getSellerById);
+// GET /admins/sellers/:id ✅
+router.get("/sellers/:id", adminController.getSellerById);
 
-// UPDATE SELLER DETAILS✅
-router.put("/sellers/:id", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.updateSellerById);
-router.patch("/sellers/:id", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.updateSellerById);
+// PUT|PATCH /admins/sellers/:id ✅
+router.put("/sellers/:id", adminController.updateSellerById);
+router.patch("/sellers/:id", adminController.updateSellerById);
 
-//SOFT DELETE SELLER✅
-router.delete("/sellers/:id", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.deleteSellerById);
+// PATCH /admins/sellers/:id/approve ✅
+router.patch("/sellers/:id/approve", adminController.approveSeller);
 
-//RESTORE SELLER✅
-router.patch("/sellers/:id/restore", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.restoreSeller);
+// PATCH /admins/sellers/:id/suspend ✅
+router.patch("/sellers/:id/suspend", adminController.suspendSeller);
 
-//FORCE DELETE SELLER✅
-router.delete("/sellers/:id/force", authenticateToken, requireRole("SuperAdmin"), adminController.forceDeleteSeller);
+// PATCH /admins/sellers/:id/restore ✅
+router.patch("/sellers/:id/restore", adminController.restoreSeller);
 
-// GET APPLICATION OVERVIEW / DASHBOARD (ADMIN ACCESS)✅
-router.get("/overview", authenticateToken, requireRole("Admin", "SuperAdmin"), paginate, adminController.getOverview);
+// DELETE /admins/sellers/:id  (soft delete) ✅
+router.delete("/sellers/:id", adminController.deleteSellerById);
 
-//CATEGORIES
-// GET ALL CATEGORIES✅
-router.get("/categories", authenticateToken, requireRole("Admin", "SuperAdmin"), paginate, adminController.getAllCategories);
+// DELETE /admins/sellers/:id/force  (SuperAdmin only) ✅
+router.delete("/sellers/:id/force", requireRole("SuperAdmin"), adminController.forceDeleteSeller);
 
-// CREATE CATEGORY✅
-router.post("/categories", authenticateToken, requireRole("Admin", "SuperAdmin"), categoryController.createCategory);
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
 
-// GET SINGLE CATEGORY BY ID✅
-router.get("/categories/:id", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.getCategoryById);
+// GET /admins/overview ✅
+router.get("/overview", paginate, adminController.getOverview);
 
-// UPDATE CATEGORY✅
-router.put("/categories/:id", authenticateToken, requireRole("Admin", "SuperAdmin"), categoryController.updateCategory);
-router.patch("/categories/:id", authenticateToken, requireRole("Admin", "SuperAdmin"), categoryController.updateCategory);
+// ─── CATEGORY MANAGEMENT ──────────────────────────────────────────────────────
 
-// DELETE CATEGORY✅
-router.delete("/categories/:id", authenticateToken, requireRole("Admin", "SuperAdmin"), categoryController.deleteCategory);
+// GET /admins/categories ✅
+router.get("/categories", paginate, adminController.getAllCategories);
 
-//SUBCATEGORY
-// GET ALL SUBCATEGORIES✅
-router.get("/subcategories", authenticateToken, requireRole("Admin", "SuperAdmin"), paginate, adminController.getAllSubcategories);
+// POST /admins/categories ✅
+router.post("/categories", categoryController.createCategory);
 
-// CREATE SUBCATEGORY✅
-router.post("/subcategories", authenticateToken, requireRole("Admin", "SuperAdmin"), subcategoryController.createSubcategory);
+// GET /admins/categories/:id ✅
+router.get("/categories/:id", adminController.getCategoryById);
 
-// GET SINGLE SUBCATEGORY BY ID✅
-router.get("/subcategories/:id", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.getSubcategoryById);
+// PUT|PATCH /admins/categories/:id ✅
+router.put("/categories/:id", categoryController.updateCategory);
+router.patch("/categories/:id", categoryController.updateCategory);
 
-// UPDATE SUBCATEGORY✅
-router.put("/subcategories/:id", authenticateToken, requireRole("Admin", "SuperAdmin"), subcategoryController.updateSubcategory);
-router.patch("/subcategories/:id", authenticateToken, requireRole("Admin", "SuperAdmin"), subcategoryController.updateSubcategory);
+// DELETE /admins/categories/:id ✅
+router.delete("/categories/:id", categoryController.deleteCategory);
 
-// DELETE SUBCATEGORY✅
-router.delete("/subcategories/:id", authenticateToken, requireRole("Admin", "SuperAdmin"), subcategoryController.deleteSubcategory);
+// ─── SUBCATEGORY MANAGEMENT ───────────────────────────────────────────────────
 
-// --- PRODUCT MANAGEMENT (ADMIN ONLY) ---
+// GET /admins/subcategories ✅
+router.get("/subcategories", paginate, adminController.getAllSubcategories);
 
-// ADMIN LIST ALL PRODUCTS✅
-router.get("/products", authenticateToken, requireRole("Admin", "SuperAdmin"), paginate, productController.getAllProductsAdmin);
+// POST /admins/subcategories ✅
+router.post("/subcategories", subcategoryController.createSubcategory);
 
-// (Pending products can be viewed using /products?status=Pending)
+// GET /admins/subcategories/:id ✅
+router.get("/subcategories/:id", adminController.getSubcategoryById);
 
-// GET SINGLE PRODUCT BY ID✅
-router.get("/products/:id", authenticateToken, requireRole("Admin", "SuperAdmin"), productController.getProductById);
+// PUT|PATCH /admins/subcategories/:id ✅
+router.put("/subcategories/:id", subcategoryController.updateSubcategory);
+router.patch("/subcategories/:id", subcategoryController.updateSubcategory);
 
-// CREATE PRODUCT✅
-router.post("/products", authenticateToken, requireRole("Admin", "SuperAdmin"), productController.createProduct);
+// DELETE /admins/subcategories/:id ✅
+router.delete("/subcategories/:id", subcategoryController.deleteSubcategory);
 
-// UPDATE PRODUCT✅
-router.put("/products/:id", authenticateToken, requireRole("Admin", "SuperAdmin"), productController.updateProduct);
-router.patch("/products/:id", authenticateToken, requireRole("Admin", "SuperAdmin"), productController.updateProduct);
+// ─── PRODUCT MANAGEMENT ───────────────────────────────────────────────────────
 
-// APPROVE PRODUCT WORKFLOW✅
-router.patch("/products/:id/approve", authenticateToken, requireRole("Admin", "SuperAdmin"), productController.approveProduct);
+// GET /admins/products ✅  (filter: ?status=Pending)
+router.get("/products", paginate, productController.getAllProductsAdmin);
 
-// REJECT PRODUCT WORKFLOW✅
-router.patch("/products/:id/reject", authenticateToken, requireRole("Admin", "SuperAdmin"), productController.rejectProduct);
+// GET /admins/products/:id ✅
+router.get("/products/:id", productController.getProductById);
 
-// UPDATE PRODUCT STATUS DIRECTLY✅
-router.patch("/products/:id/status", authenticateToken, requireRole("Admin", "SuperAdmin"), productController.updateProductStatus);
+// POST /admins/products ✅
+router.post("/products", productController.createProduct);
 
-// DELETE PRODUCT✅
-router.delete("/products/:id", authenticateToken, requireRole("Admin", "SuperAdmin"), productController.deleteProduct);
+// PUT|PATCH /admins/products/:id ✅
+router.put("/products/:id", productController.updateProduct);
+router.patch("/products/:id", productController.updateProduct);
 
-// --- USER MANAGEMENT WORKFLOW (ADMIN ONLY) ---
+// PATCH /admins/products/:id/approve ✅
+router.patch("/products/:id/approve", productController.approveProduct);
 
-// GET ALL USERS✅ (Supports ?status=Active|Blocked & ?withDeleted=true)
-router.get("/users", authenticateToken, requireRole("Admin", "SuperAdmin"), paginate, adminController.getAllUsers);
+// PATCH /admins/products/:id/reject ✅
+router.patch("/products/:id/reject", productController.rejectProduct);
 
-// GET ONE USER BY ID✅ (Supports ?withDeleted=true)
-router.get("/users/:id", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.getUserById);
+// PATCH /admins/products/:id/status ✅
+router.patch("/products/:id/status", productController.updateProductStatus);
 
-// BLOCK / UNBLOCK USER✅
-router.patch("/users/:id/block", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.blockUser);
-router.patch("/users/:id/unblock", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.unblockUser);
+// DELETE /admins/products/:id ✅
+router.delete("/products/:id", productController.deleteProduct);
 
-// SOFT DELETE USER✅
-router.delete("/users/:id", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.softDeleteUser);
+// ─── USER MANAGEMENT ──────────────────────────────────────────────────────────
 
-// RESTORE SOFT DELETED USER✅
-router.patch("/users/:id/restore", authenticateToken, requireRole("Admin", "SuperAdmin"), adminController.restoreUser);
+// GET /admins/users ✅  (filter: ?status=Active|Blocked, ?withDeleted=true)
+router.get("/users", paginate, adminController.getAllUsers);
 
-// FORCE (PERMANENT) DELETE USER✅
-router.delete("/users/:id/force", authenticateToken, requireRole("SuperAdmin"), adminController.forceDeleteUser);
+// GET /admins/users/:id ✅  (supports ?withDeleted=true)
+router.get("/users/:id", adminController.getUserById);
 
-// --- ADMIN SPECIFIC ROUTES (MUST BE AT BOTTOM TO PREVENT ROUTE COLLISIONS) ---
+// PATCH /admins/users/:id/block|unblock ✅
+router.patch("/users/:id/block", adminController.blockUser);
+router.patch("/users/:id/unblock", adminController.unblockUser);
 
-// GET ALL ADMINS✅
-router.get("/", authenticateToken, requireRole("SuperAdmin"), paginate, adminController.getAllAdmins);
+// DELETE /admins/users/:id  (soft delete) ✅
+router.delete("/users/:id", adminController.softDeleteUser);
 
-// GET ONE ADMIN BY ID✅
-router.get("/:id", authenticateToken, requireRole("SuperAdmin"), adminController.getAdminById);
+// PATCH /admins/users/:id/restore ✅
+router.patch("/users/:id/restore", adminController.restoreUser);
 
-// UPDATE ADMIN✅
-router.put("/:id", authenticateToken, requireRole("SuperAdmin"), adminController.updateAdmin);
-router.patch("/:id", authenticateToken, requireRole("SuperAdmin"), adminController.updateAdmin);
+// DELETE /admins/users/:id/force  (SuperAdmin only) ✅
+router.delete("/users/:id/force", requireRole("SuperAdmin"), adminController.forceDeleteUser);
 
-// SUSPEND / UNSUSPEND ADMIN✅
-router.patch("/:id/suspend", authenticateToken, requireRole("SuperAdmin"), adminController.suspendAdmin);
-router.patch("/:id/unsuspend", authenticateToken, requireRole("SuperAdmin"), adminController.unsuspendAdmin);
+// ─── ADMIN MANAGEMENT (SuperAdmin only) ───────────────────────────────────────
+// NOTE: These wildcard routes must stay at the bottom to prevent collision
+//       with named routes like /profile, /sellers, /users etc.
+
+// GET /admins/ ✅
+router.get("/", requireRole("SuperAdmin"), paginate, adminController.getAllAdmins);
+
+// GET /admins/:id ✅
+router.get("/:id", requireRole("SuperAdmin"), adminController.getAdminById);
+
+// PUT|PATCH /admins/:id ✅
+router.put("/:id", requireRole("SuperAdmin"), adminController.updateAdmin);
+router.patch("/:id", requireRole("SuperAdmin"), adminController.updateAdmin);
+
+// PATCH /admins/:id/suspend|unsuspend ✅
+router.patch("/:id/suspend", requireRole("SuperAdmin"), adminController.suspendAdmin);
+router.patch("/:id/unsuspend", requireRole("SuperAdmin"), adminController.unsuspendAdmin);
 
 module.exports = router;

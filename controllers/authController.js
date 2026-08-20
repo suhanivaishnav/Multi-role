@@ -3,10 +3,11 @@ const { Op } = require("sequelize");
 const crypto = require("crypto");
 const { sendPasswordResetEmail } = require("../helpers/email");
 const { comparePassword, generateToken, hashPassword } = require("../middleware/auth");
+const { syncGuestCart } = require("./cartController");
 
 exports.loginUser = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password, guestCart } = req.body;
 
         if (!email || !password) {
             return res.status(400).json({ message: "Email and password are required" });
@@ -38,10 +39,22 @@ exports.loginUser = async (req, res) => {
         const userJson = user.toJSON();
         delete userJson.password;
 
+        // Sync guest cart into the user's account cart if provided
+        let cartSync = null;
+        if (guestCart && Array.isArray(guestCart) && guestCart.length > 0) {
+            try {
+                cartSync = await syncGuestCart(user.id, guestCart);
+            } catch (syncErr) {
+                console.error("Guest cart sync failed during login:", syncErr);
+                // Non-blocking: login still succeeds even if sync fails
+            }
+        }
+
         return res.status(200).json({
             message: "Login successful",
             token,
-            user: userJson
+            user: userJson,
+            ...(cartSync && { cartSync })
         });
     } catch (error) {
         return res.status(500).json({
