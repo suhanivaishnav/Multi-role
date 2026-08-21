@@ -18,10 +18,11 @@ const getProductIncludes = () => [
 // Helper to determine user role category
 const getUserRoleCategory = (user) => {
     if (!user) return "Guest";
-    if (user.role === "admin" || user.role === "superadmin") {
+    const role = user.role ? user.role.toLowerCase() : "";
+    if (role === "admin" || role === "superadmin") {
         return "Admin";
     }
-    if (user.role === "seller") {
+    if (role === "seller") {
         return "Seller";
     }
     return "User";

@@ -4,6 +4,7 @@ const crypto = require("crypto");
 const { sendPasswordResetEmail } = require("../helpers/email");
 const { comparePassword, generateToken, hashPassword } = require("../middleware/auth");
 const { syncGuestCart } = require("./cartController");
+const { sanitizeUser } = require("../helpers/utils");
 
 exports.loginUser = async (req, res) => {
     try {
@@ -36,8 +37,7 @@ exports.loginUser = async (req, res) => {
             role: user.role
         });
 
-        const userJson = user.toJSON();
-        delete userJson.password;
+        const userJson = sanitizeUser(user);
 
         // Sync guest cart into the user's account cart if provided
         let cartSync = null;

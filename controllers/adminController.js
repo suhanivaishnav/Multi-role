@@ -208,9 +208,13 @@ exports.updateAdmin = async (req, res) => {
             req.body.password = await hashPassword(req.body.password);
         }
 
-        const updateData = { ...req.body };
-        delete updateData.id;
-        delete updateData.role;
+        const allowedFields = ["name", "email", "phone", "status", "password"];
+        const updateData = {};
+        for (const field of allowedFields) {
+            if (req.body[field] !== undefined) {
+                updateData[field] = req.body[field];
+            }
+        }
 
         await admin.update(updateData);
         return res.status(200).json({
@@ -466,9 +470,13 @@ exports.updateSellerById = async (req, res) => {
             }
         }
 
-        const updateData = { ...req.body };
-        delete updateData.id;
-        delete updateData.role;
+        const allowedFields = ["name", "email", "phone", "status", "password"];
+        const updateData = {};
+        for (const field of allowedFields) {
+            if (req.body[field] !== undefined) {
+                updateData[field] = req.body[field];
+            }
+        }
 
         if (updateData.password) {
             updateData.password = await hashPassword(updateData.password);

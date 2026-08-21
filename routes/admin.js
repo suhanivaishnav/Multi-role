@@ -5,6 +5,7 @@ const adminController = require("../controllers/adminController");
 const categoryController = require("../controllers/categoryController");
 const subcategoryController = require("../controllers/subcategoryController");
 const productController = require("../controllers/productController");
+const orderController = require("../controllers/orderController");
 const paginate = require("../middleware/pagination");
 
 // ─── BASELINE: All routes below require a valid token + Admin or SuperAdmin role
@@ -33,12 +34,15 @@ router.patch("/sellers/:id", adminController.updateSellerById);
 
 // PATCH /admins/sellers/:id/approve    
 router.patch("/sellers/:id/approve", adminController.approveSeller);
+router.put("/sellers/:id/approve", adminController.approveSeller);
 
 // PATCH /admins/sellers/:id/suspend
 router.patch("/sellers/:id/suspend", adminController.suspendSeller);
+router.put("/sellers/:id/suspend", adminController.suspendSeller);
 
 // PATCH /admins/sellers/:id/restore 
 router.patch("/sellers/:id/restore", adminController.restoreSeller);
+router.put("/sellers/:id/restore", adminController.restoreSeller);
 
 // DELETE /admins/sellers/:id  (soft delete)
 router.delete("/sellers/:id", adminController.deleteSellerById);
@@ -104,12 +108,15 @@ router.patch("/products/:id", productController.updateProduct);
 
 // PATCH /admins/products/:id/approve 
 router.patch("/products/:id/approve", productController.approveProduct);
+router.put("/products/:id/approve", productController.approveProduct);
 
 // PATCH /admins/products/:id/reject 
 router.patch("/products/:id/reject", productController.rejectProduct);
+router.put("/products/:id/reject", productController.rejectProduct);
 
 // PATCH /admins/products/:id/status 
 router.patch("/products/:id/status", productController.updateProductStatus);
+router.put("/products/:id/status", productController.updateProductStatus);
 
 // DELETE /admins/products/:id 
 router.delete("/products/:id", productController.deleteProduct);
@@ -131,9 +138,22 @@ router.delete("/users/:id", adminController.softDeleteUser);
 
 // PATCH /admins/users/:id/restore 
 router.patch("/users/:id/restore", adminController.restoreUser);
+router.put("/users/:id/restore", adminController.restoreUser);
 
 // DELETE /admins/users/:id/force  (SuperAdmin only) 
 router.delete("/users/:id/force", requireRole("SuperAdmin"), adminController.forceDeleteUser);
+
+// ─── ORDER MANAGEMENT ─────────────────────────────────────────────────────────
+
+// GET /admins/orders
+router.get("/orders", paginate, orderController.getAllOrders);
+
+// GET /admins/orders/:id
+router.get("/orders/:id", orderController.getOrderDetails);
+
+// PUT|PATCH /admins/orders/:id/status
+router.put("/orders/:id/status", orderController.updateOrderStatus);
+router.patch("/orders/:id/status", orderController.updateOrderStatus);
 
 // ─── ADMIN MANAGEMENT (SuperAdmin only) ───────────────────────────────────────
 // NOTE: These wildcard routes must stay at the bottom to prevent collision
@@ -151,6 +171,8 @@ router.patch("/:id", requireRole("SuperAdmin"), adminController.updateAdmin);
 
 // PATCH /admins/:id/suspend|unsuspend 
 router.patch("/:id/suspend", requireRole("SuperAdmin"), adminController.suspendAdmin);
+router.put("/:id/suspend", requireRole("SuperAdmin"), adminController.suspendAdmin);
 router.patch("/:id/unsuspend", requireRole("SuperAdmin"), adminController.unsuspendAdmin);
+router.put("/:id/unsuspend", requireRole("SuperAdmin"), adminController.unsuspendAdmin);
 
 module.exports = router;

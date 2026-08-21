@@ -10,6 +10,7 @@ const adminRoutes = require("./routes/admin");
 const sellerRoutes = require("./routes/seller");
 const authRoutes = require("./routes/auth");
 const cartRoutes = require("./routes/cart");
+const orderRoutes = require("./routes/order");
 const PORT = process.env.PORT;
 
 const app = express();
@@ -36,6 +37,7 @@ app.use("/users", userRoutes);
 app.use("/admins", adminRoutes);
 app.use("/sellers", sellerRoutes);
 app.use("/cart", cartRoutes);
+app.use("/orders", orderRoutes);
 
 app.get("/", (req, res) => {
     res.send("API is running");
