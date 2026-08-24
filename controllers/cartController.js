@@ -20,13 +20,13 @@ exports.addToCart = async (req, res) => {
         const { productId, quantity } = req.body;
 
         // Validate required fields
-        if (!productId) {
-            return res.status(400).json({ message: "productId is required" });
+        if (!productId || !quantity) {
+            return res.status(400).json({ message: "productId and quantity are required" });
         }
 
         const qty = parseInt(quantity);
         if (isNaN(qty) || qty < 1) {
-            return res.status(400).json({ message: "Quantity must be a positive integer" });
+            return res.status(400).json({ message: "Quantity cannot be negative" });
         }
 
         // Validate product exists and is Active
@@ -68,6 +68,7 @@ exports.addToCart = async (req, res) => {
             cartItem.subtotal = (parseFloat(product.price) * newQty).toFixed(2);
             await cartItem.save();
         } else {
+
             // Create new cart item
             cartItem = await CartItem.create({
                 cartId: cart.id,
@@ -321,9 +322,8 @@ exports.guestAddToCart = async (req, res) => {
 
         if (product.stock < totalQty) {
             return res.status(400).json({
-                message: `Insufficient stock. Available: ${product.stock}${
-                    alreadyInCart ? `, already in cart: ${alreadyInCart}` : ""
-                }`
+                message: `Insufficient stock. Available: ${product.stock}${alreadyInCart ? `, already in cart: ${alreadyInCart}` : ""
+                    }`
             });
         }
 

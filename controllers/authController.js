@@ -64,6 +64,21 @@ exports.loginUser = async (req, res) => {
     }
 };
 
+exports.logoutUser = async (req, res) => {
+    try {
+        // For stateless JWTs, true logout happens client-side by deleting the token.
+        // If a token blacklist table exists, you could invalidate the token here.
+        return res.status(200).json({
+            message: "Logout successful"
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: "Failed to logout",
+            error: "An internal server error occurred"
+        });
+    }
+};
+
 exports.forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;

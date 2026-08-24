@@ -1,4 +1,5 @@
 const { Category, Subcategory } = require("../models");
+const { Op } = require("sequelize");
 
 // CREATE CATEGORY
 exports.createCategory = async (req, res) => {
@@ -39,7 +40,24 @@ exports.createCategory = async (req, res) => {
 // GET ALL CATEGORIES
 exports.getAllCategories = async (req, res) => {
     try {
-        const categories = await Category.findAll();
+        const { search, sortBy, sortOrder } = req.query;
+        
+        const whereCondition = {};
+        if (search) {
+            whereCondition.name = { [Op.like]: `%${search}%` };
+        }
+
+        const orderClause = [];
+        if (sortBy) {
+            orderClause.push([sortBy, sortOrder && sortOrder.toUpperCase() === "ASC" ? "ASC" : "DESC"]);
+        } else {
+            orderClause.push(["createdAt", "DESC"]);
+        }
+
+        const categories = await Category.findAll({
+            where: whereCondition,
+            order: orderClause
+        });
         return res.status(200).json(categories);
     } catch (error) {
         return res.status(500).json({

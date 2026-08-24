@@ -4,6 +4,57 @@ const { User } = require('../models');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
+// Create a simple logging middleware
+function requestLogger(req, res, next) {
+    const timestamp = new Date().toISOString();
+    console.log(`${timestamp} - ${req.method} ${req.url}`);
+    next(); // Don't forget to call next()
+}
+
+const validateUserRegistration = (req, res, next) => {
+    const { email, password } = req.body;
+    const errors = [];
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
+        errors.push("A valid email is required");
+    }
+
+    if (!password || password.length < 6) {
+        errors.push("Password must be at least 6 characters long");
+    }
+
+    if (errors.length > 0) {
+        return res.status(400).json(errors);
+    }
+
+    next();
+};
+
+const validateUserUpdate = (req, res, next) => {
+    const { email, phone, password } = req.body;
+    const errors = [];
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (email !== undefined && !emailRegex.test(email)) {
+        errors.push("A valid email is required");
+    }
+
+    if (password !== undefined && password.length < 6) {
+        errors.push("Password must be at least 6 characters long");
+    }
+
+    if (phone !== undefined && phone.trim().length < 10) {
+        errors.push("Phone must be at least 10 characters long");
+    }
+
+    if (errors.length > 0) {
+        return res.status(400).json(errors);
+    }
+
+    next();
+};
+
+
 //Hash a plain text password using bcrypt
 const hashPassword = async (password) => {
     const salt = await bcrypt.genSalt(10);
@@ -72,6 +123,9 @@ const authorize = (...roles) => {
 };
 
 module.exports = {
+    requestLogger,
+    validateUserRegistration,
+    validateUserUpdate,
     hashPassword,
     comparePassword,
     generateToken,

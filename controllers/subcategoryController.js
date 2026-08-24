@@ -36,7 +36,25 @@ exports.createSubcategory = async (req, res) => {
 // GET ALL SUBCATEGORIES
 exports.getAllSubcategories = async (req, res) => {
     try {
+        const { search, sortBy, sortOrder, categoryId } = req.query;
+
+        const whereCondition = {};
+        if (categoryId) {
+            whereCondition.categoryId = categoryId;
+        }
+        if (search) {
+            whereCondition.name = { [Op.like]: `%${search}%` };
+        }
+
+        const orderClause = [];
+        if (sortBy) {
+            orderClause.push([sortBy, sortOrder && sortOrder.toUpperCase() === "ASC" ? "ASC" : "DESC"]);
+        } else {
+            orderClause.push(["createdAt", "DESC"]);
+        }
         const subcategories = await Subcategory.findAll({
+            where: whereCondition,
+            order: orderClause,
             include: [
                 {
                     model: Category,

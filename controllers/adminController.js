@@ -1,4 +1,5 @@
 const { User, Category, Subcategory, Product } = require("../models");
+const { Op } = require("sequelize");
 const { sanitizeUser } = require("../helpers/utils");
 const { hashPassword, comparePassword } = require("../middleware/auth");
 
@@ -115,7 +116,7 @@ exports.suspendSeller = async (req, res) => {
 
 exports.getOverview = async (req, res) => {
     try {
-        const [userCount, sellerCount, adminCount, categoryCount, subcategoryCount, pendingSellersCount, productsCount, pendingProductsCount, rejectedProductsCount] = await Promise.all([
+        const [userCount, sellerCount, adminCount, categoryCount, subcategoryCount, pendingSellersCount, productsCount, pendingProductsCount] = await Promise.all([
             User.count({ where: { role: 'user' } }),
             User.count({ where: { role: 'seller' } }),
             User.count({ where: { role: 'admin' } }),
@@ -123,8 +124,7 @@ exports.getOverview = async (req, res) => {
             Subcategory.count(),
             User.count({ where: { role: 'seller', status: 'Pending' } }),
             Product.count(),
-            Product.count({ where: { status: 'Pending' } }),
-            Product.count({ where: { status: 'Rejected' } })
+            Product.count({ where: { status: 'Pending' } })
         ]);
 
         const { limit, offset } = req.pagination;
@@ -142,8 +142,7 @@ exports.getOverview = async (req, res) => {
             totalCategories: categoryCount,
             totalSubcategories: subcategoryCount,
             totalProducts: productsCount,
-            totalPendingProducts: pendingProductsCount,
-            totalRejectedProducts: rejectedProductsCount
+            totalPendingProducts: pendingProductsCount
         };
 
         if (req.user && req.user.role === 'superadmin') {
@@ -166,9 +165,27 @@ exports.getOverview = async (req, res) => {
 
 exports.getAllAdmins = async (req, res) => {
     try {
+        const { search, sortBy, sortOrder } = req.query;
+        const whereCondition = { role: 'admin' };
+        
+        if (search) {
+            whereCondition[Op.or] = [
+                { name: { [Op.like]: `%${search}%` } },
+                { email: { [Op.like]: `%${search}%` } }
+            ];
+        }
+
+        const orderClause = [];
+        if (sortBy) {
+            orderClause.push([sortBy, sortOrder && sortOrder.toUpperCase() === "ASC" ? "ASC" : "DESC"]);
+        } else {
+            orderClause.push(["createdAt", "DESC"]);
+        }
+
         const admins = await User.findAll({
-            where: { role: 'admin' },
-            attributes: { exclude: ["password"] }
+            where: whereCondition,
+            attributes: { exclude: ["password"] },
+            order: orderClause
         });
         return res.status(200).json(admins);
     } catch (error) {
@@ -263,17 +280,31 @@ exports.unsuspendAdmin = async (req, res) => {
 
 exports.getAllUsers = async (req, res) => {
     try {
-        const { status, withDeleted } = req.query;
+        const { status, withDeleted, search, sortBy, sortOrder } = req.query;
 
         const whereCondition = { role: "user" };
         if (status) {
             whereCondition.status = status;
+        }
+        if (search) {
+            whereCondition[Op.or] = [
+                { name: { [Op.like]: `%${search}%` } },
+                { email: { [Op.like]: `%${search}%` } }
+            ];
+        }
+
+        const orderClause = [];
+        if (sortBy) {
+            orderClause.push([sortBy, sortOrder && sortOrder.toUpperCase() === "ASC" ? "ASC" : "DESC"]);
+        } else {
+            orderClause.push(["createdAt", "DESC"]);
         }
 
         const { count, rows } = await User.findAndCountAll({
             where: whereCondition,
             attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires"] },
             paranoid: withDeleted === "true" ? false : true,
+            order: orderClause,
             limit: req.pagination.limit,
             offset: req.pagination.offset
         });
@@ -415,14 +446,29 @@ exports.forceDeleteUser = async (req, res) => {
 
 exports.getAllSellers = async (req, res) => {
     try {
+        const { status, search, sortBy, sortOrder } = req.query;
         const whereCondition = { role: "seller" };
-        if (req.query.status) {
-            whereCondition.status = req.query.status;
+        if (status) {
+            whereCondition.status = status;
+        }
+        if (search) {
+            whereCondition[Op.or] = [
+                { name: { [Op.like]: `%${search}%` } },
+                { email: { [Op.like]: `%${search}%` } }
+            ];
+        }
+
+        const orderClause = [];
+        if (sortBy) {
+            orderClause.push([sortBy, sortOrder && sortOrder.toUpperCase() === "ASC" ? "ASC" : "DESC"]);
+        } else {
+            orderClause.push(["createdAt", "DESC"]);
         }
 
         const { count, rows } = await User.findAndCountAll({
             where: whereCondition,
             attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires"] },
+            order: orderClause,
             limit: req.pagination.limit,
             offset: req.pagination.offset
         });
@@ -559,6 +605,7 @@ exports.forceDeleteSeller = async (req, res) => {
 
 exports.getAllCategories = async (req, res) => {
     try {
+        const { search, sortBy, sortOrder } = req.query;
         const include = [];
 
         // SuperAdmins can see which admin created the category
@@ -570,7 +617,23 @@ exports.getAllCategories = async (req, res) => {
             });
         }
 
-        const categories = await Category.findAll({ include });
+        const whereCondition = {};
+        if (search) {
+            whereCondition.name = { [Op.like]: `%${search}%` };
+        }
+
+        const orderClause = [];
+        if (sortBy) {
+            orderClause.push([sortBy, sortOrder && sortOrder.toUpperCase() === "ASC" ? "ASC" : "DESC"]);
+        } else {
+            orderClause.push(["createdAt", "DESC"]);
+        }
+
+        const categories = await Category.findAll({ 
+            where: whereCondition,
+            include,
+            order: orderClause
+        });
         return res.status(200).json(categories);
     } catch (error) {
         return res.status(500).json({
@@ -582,6 +645,7 @@ exports.getAllCategories = async (req, res) => {
 
 exports.getAllSubcategories = async (req, res) => {
     try {
+        const { search, sortBy, sortOrder, categoryId } = req.query;
         const include = [{
             model: Category,
             as: "category"
@@ -596,7 +660,26 @@ exports.getAllSubcategories = async (req, res) => {
             });
         }
 
-        const subcategories = await Subcategory.findAll({ include });
+        const whereCondition = {};
+        if (categoryId) {
+            whereCondition.categoryId = categoryId;
+        }
+        if (search) {
+            whereCondition.name = { [Op.like]: `%${search}%` };
+        }
+
+        const orderClause = [];
+        if (sortBy) {
+            orderClause.push([sortBy, sortOrder && sortOrder.toUpperCase() === "ASC" ? "ASC" : "DESC"]);
+        } else {
+            orderClause.push(["createdAt", "DESC"]);
+        }
+
+        const subcategories = await Subcategory.findAll({ 
+            where: whereCondition,
+            include,
+            order: orderClause
+        });
         return res.status(200).json(subcategories);
     } catch (error) {
         return res.status(500).json({

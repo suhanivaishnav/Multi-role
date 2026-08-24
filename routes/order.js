@@ -13,4 +13,7 @@ router.get("/myorders", authenticate, authorize("user"), paginate, orderControll
 // Get order details
 router.get("/:id", authenticate, authorize("user"), orderController.getOrderDetails);
 
+// Cancel order
+router.put("/:id/cancel", authenticate, authorize("user"), orderController.cancelOrder);
+
 module.exports = router;

@@ -2,6 +2,7 @@ const express = require("express");
 const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 dotenv.config();
+const { requestLogger } = require("./middleware/auth");
 const categoryRoutes = require("./routes/category");
 const subcategoryRoutes = require("./routes/subcategory");
 const productRoutes = require("./routes/product")
@@ -16,6 +17,9 @@ const PORT = process.env.PORT;
 const app = express();
 
 app.use(express.json());
+
+// Use the middleware
+app.use(requestLogger);
 
 // Apply global rate limiting to all requests
 const globalLimiter = rateLimit({

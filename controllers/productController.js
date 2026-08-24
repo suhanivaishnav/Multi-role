@@ -108,7 +108,7 @@ exports.createProduct = async (req, res) => {
 exports.getMyProducts = async (req, res) => {
     try {
         const sellerId = req.user.id;
-        const { status, categoryId, subcategoryId, search } = req.query;
+        const { status, categoryId, subcategoryId, search, sortBy, sortOrder } = req.query;
 
         const whereCondition = { sellerId };
 
@@ -128,10 +128,17 @@ exports.getMyProducts = async (req, res) => {
             ];
         }
 
+        const orderClause = [];
+        if (sortBy) {
+            orderClause.push([sortBy, sortOrder && sortOrder.toUpperCase() === "ASC" ? "ASC" : "DESC"]);
+        } else {
+            orderClause.push(["createdAt", "DESC"]);
+        }
+
         const { count, rows } = await Product.findAndCountAll({
             where: whereCondition,
             include: getProductIncludes(),
-            order: [["createdAt", "DESC"]],
+            order: orderClause,
             limit: req.pagination.limit,
             offset: req.pagination.offset,
             distinct: true
@@ -148,7 +155,7 @@ exports.getMyProducts = async (req, res) => {
 
 exports.getAllProductsAdmin = async (req, res) => {
     try {
-        const { sellerId, status, categoryId, subcategoryId, search } = req.query;
+        const { sellerId, status, categoryId, subcategoryId, search, sortBy, sortOrder } = req.query;
         const whereCondition = {};
 
         if (sellerId) whereCondition.sellerId = sellerId;
@@ -162,10 +169,17 @@ exports.getAllProductsAdmin = async (req, res) => {
             ];
         }
 
+        const orderClause = [];
+        if (sortBy) {
+            orderClause.push([sortBy, sortOrder && sortOrder.toUpperCase() === "ASC" ? "ASC" : "DESC"]);
+        } else {
+            orderClause.push(["createdAt", "DESC"]);
+        }
+
         const { count, rows } = await Product.findAndCountAll({
             where: whereCondition,
             include: getProductIncludes(),
-            order: [["createdAt", "DESC"]],
+            order: orderClause,
             limit: req.pagination.limit,
             offset: req.pagination.offset,
             distinct: true
@@ -183,12 +197,27 @@ exports.getAllProductsAdmin = async (req, res) => {
 exports.getProductsByCategory = async (req, res) => {
     try {
         const { categoryId } = req.params;
+        const { search, sortBy, sortOrder } = req.query;
         const whereCondition = { "$subcategory.categoryId$": categoryId, status: "Active" };
+
+        if (search) {
+            whereCondition[Op.or] = [
+                { name: { [Op.like]: `%${search}%` } },
+                { description: { [Op.like]: `%${search}%` } }
+            ];
+        }
+
+        const orderClause = [];
+        if (sortBy) {
+            orderClause.push([sortBy, sortOrder && sortOrder.toUpperCase() === "ASC" ? "ASC" : "DESC"]);
+        } else {
+            orderClause.push(["createdAt", "DESC"]);
+        }
 
         const { count, rows } = await Product.findAndCountAll({
             where: whereCondition,
             include: getProductIncludes(),
-            order: [["createdAt", "DESC"]],
+            order: orderClause,
             limit: req.pagination.limit,
             offset: req.pagination.offset,
             distinct: true
@@ -206,12 +235,27 @@ exports.getProductsByCategory = async (req, res) => {
 exports.getProductsBySubcategory = async (req, res) => {
     try {
         const { subcategoryId } = req.params;
+        const { search, sortBy, sortOrder } = req.query;
         const whereCondition = { subcategoryId, status: "Active" };
+
+        if (search) {
+            whereCondition[Op.or] = [
+                { name: { [Op.like]: `%${search}%` } },
+                { description: { [Op.like]: `%${search}%` } }
+            ];
+        }
+
+        const orderClause = [];
+        if (sortBy) {
+            orderClause.push([sortBy, sortOrder && sortOrder.toUpperCase() === "ASC" ? "ASC" : "DESC"]);
+        } else {
+            orderClause.push(["createdAt", "DESC"]);
+        }
 
         const { count, rows } = await Product.findAndCountAll({
             where: whereCondition,
             include: getProductIncludes(),
-            order: [["createdAt", "DESC"]],
+            order: orderClause,
             limit: req.pagination.limit,
             offset: req.pagination.offset,
             distinct: true
@@ -427,7 +471,7 @@ exports.rejectProduct = async (req, res) => {
         });
 
         return res.status(200).json({
-            message: "Product rejected successfully by Admin.",
+            message: "Product Rejected by Admin.",
             product: updatedProduct
         });
     } catch (error) {
@@ -461,7 +505,7 @@ exports.updateProductStatus = async (req, res) => {
         });
 
         return res.status(200).json({
-            message: `Product status updated to '${status}' successfully by Admin`,
+            message: `Product status updated to '${status}' by Admin`,
             product: updatedProduct
         });
     } catch (error) {

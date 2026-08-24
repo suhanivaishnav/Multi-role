@@ -97,7 +97,7 @@ exports.updateProfile = async (req, res) => {
 
         if (password) {
             if (!currentPassword) {
-                return res.status(400).json({ message: "currentPassword is required to change your password" });
+                return res.status(400).json({ message: "Current Password is required to change your password" });
             }
             const isMatch = await comparePassword(currentPassword, user.password);
             if (!isMatch) {

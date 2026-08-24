@@ -1,4 +1,15 @@
 const { Order, OrderItem, Product, User, sequelize } = require("../models");
+const { Op } = require("sequelize");
+
+const restoreOrderStock = async (orderItems, transaction) => {
+    for (const item of orderItems) {
+        const product = await Product.findByPk(item.productId, { transaction, paranoid: false });
+        if (product) {
+            product.stock += item.quantity;
+            await product.save({ transaction });
+        }
+    }
+};
 
 // 1. Place Order
 exports.placeOrder = async (req, res) => {
@@ -8,7 +19,7 @@ exports.placeOrder = async (req, res) => {
         const userId = req.user.id;
 
         if (!shippingAddress || !paymentMethod) {
-            return res.status(400).json({ message: "Shipping address and payment method are required" });
+            return res.status(400).json({ message: "Shipping address and payment method both are required" });
         }
 
         if (!items || !items.length) {
@@ -18,18 +29,23 @@ exports.placeOrder = async (req, res) => {
         let totalAmount = 0;
         const orderItemsData = [];
 
-        // Validate products and calculate total
+        // Validate products with id and check the stock and calculate total
         for (let item of items) {
+            if (!item.productId || isNaN(item.productId)) {
+                await t.rollback();
+                return res.status(400).json({ message: "Invalid product ID" });
+            }
+
             const product = await Product.findByPk(item.productId, { transaction: t });
 
             if (!product) {
                 await t.rollback();
-                return res.status(404).json({ success: false, message: `Product not found with id ${item.productId}` });
+                return res.status(404).json({ message: `Product not found with id ${item.productId}` });
             }
 
             if (product.stock < item.quantity) {
                 await t.rollback();
-                return res.status(400).json({ success: false, message: `Insufficient stock for product ${product.name}` });
+                return res.status(400).json({ message: `Insufficient stock for product ${product.name}` });
             }
 
             const itemTotal = product.price * item.quantity;
@@ -41,7 +57,7 @@ exports.placeOrder = async (req, res) => {
                 price: product.price
             });
 
-            // Decrease stock
+            // Decrease stock when the order placed
             product.stock -= item.quantity;
             await product.save({ transaction: t });
         }
@@ -66,40 +82,82 @@ exports.placeOrder = async (req, res) => {
 
         await t.commit();
 
-        return res.status(201).json({
-            success: true,
-            message: "Order placed successfully",
-            order
-        });
+        return res.status(201).json({ message: "Order placed successfully", order });
 
     } catch (error) {
         await t.rollback();
         console.error("Place order error:", error);
-        return res.status(500).json({ success: false, message: "Failed to Place the order", error: error.message });
+        return res.status(500).json({ message: "Failed to Place the order", error: error.message });
     }
 };
 
 // 2. View My Orders
 exports.getMyOrders = async (req, res) => {
     try {
+        const { status, date, orderId, sortBy, sortOrder } = req.query;
+        const whereClause = { userId: req.user.id };
+
+        if (orderId) {
+            whereClause.id = orderId;
+        }
+        if (status) {
+            whereClause.status = status;
+        }
+        if (date) {
+            const startDate = new Date(date);
+            const endDate = new Date(startDate);
+            endDate.setDate(endDate.getDate() + 1);
+            whereClause.createdAt = {
+                [Op.gte]: startDate,
+                [Op.lt]: endDate
+            };
+        }
+
+        const orderClause = [];
+        if (sortBy) {
+            const order = (sortOrder && sortOrder.toUpperCase() === "ASC") ? "ASC" : "DESC";
+            orderClause.push([sortBy, order]);
+        } else {
+            orderClause.push(["createdAt", "DESC"]);
+        }
+
         const orders = await Order.findAndCountAll({
-            where: { userId: req.user.id },
+            where: whereClause,
             include: [
                 {
                     model: OrderItem,
                     as: "orderItems",
                     include: [{ model: Product, as: "product", attributes: ["id", "name", "price"] }]
-                }
+                },
+                { model: User, as: "user", attributes: ["id", "name", "email"] }
             ],
-            order: [["createdAt", "DESC"]],
+            order: orderClause,
             limit: req.pagination.limit,
             offset: req.pagination.offset
         });
 
-        return res.sendPaginated(orders.rows, orders.count, "orders", { success: true });
+        // Format orders to handle deleted products
+        const formattedOrders = orders.rows.map(order => {
+            const orderJSON = order.toJSON();
+            if (orderJSON.orderItems) {
+                orderJSON.orderItems = orderJSON.orderItems.map(item => {
+                    if (!item.product) {
+                        item.product = {
+                            id: item.productId,
+                            name: "Product Unavailable/Deleted",
+                            price: item.price
+                        };
+                    }
+                    return item;
+                });
+            }
+            return orderJSON;
+        });
+
+        return res.sendPaginated(formattedOrders, orders.count, "orders");
     } catch (error) {
         console.error("Get my orders error:", error);
-        return res.status(500).json({ success: false, message: "Server error", error: error.message });
+        return res.status(500).json({ message: "Server error", error: error.message });
     }
 };
 
@@ -107,6 +165,11 @@ exports.getMyOrders = async (req, res) => {
 exports.getOrderDetails = async (req, res) => {
     try {
         const orderId = req.params.id;
+
+        if (isNaN(orderId)) {
+            return res.status(400).json({ message: "Invalid order ID" });
+        }
+
         const order = await Order.findByPk(orderId, {
             include: [
                 {
@@ -119,18 +182,33 @@ exports.getOrderDetails = async (req, res) => {
         });
 
         if (!order) {
-            return res.status(404).json({ success: false, message: "Order not found" });
+            return res.status(404).json({ message: "Order not found" });
         }
 
-        // Check authorization (User can only view their own order, Admin/Superadmin can view any)
+        // Check authorization (User can only view their own order, Admin/Superadmin can view any from admin panel)
         if (req.user.role === "user" && order.userId !== req.user.id) {
-            return res.status(403).json({ success: false, message: "Forbidden: You do not have access to this order" });
+            return res.status(403).json({ message: "Forbidden: You do not have access to this order" });
         }
 
-        return res.status(200).json({ success: true, order });
+        // Handle deleted products
+        const orderJSON = order.toJSON();
+        if (orderJSON.orderItems) {
+            orderJSON.orderItems = orderJSON.orderItems.map(item => {
+                if (!item.product) {
+                    item.product = {
+                        id: item.productId,
+                        name: "Product Unavailable/Deleted",
+                        price: item.price
+                    };
+                }
+                return item;
+            });
+        }
+
+        return res.status(200).json({ message: "order", order: orderJSON });
     } catch (error) {
         console.error("Get order details error:", error);
-        return res.status(500).json({ success: false, message: "Server error", error: error.message });
+        return res.status(500).json({ message: "Server error", error: error.message });
     }
 };
 
@@ -140,41 +218,205 @@ exports.updateOrderStatus = async (req, res) => {
         const { status } = req.body;
         const orderId = req.params.id;
 
-        const validStatuses = ["Pending", "Confirmed", "Processing", "Shipped", "Delivered", "Cancelled"];
-        if (!validStatuses.includes(status)) {
-            return res.status(400).json({ success: false, message: "Invalid status value" });
+        if (isNaN(orderId)) {
+            return res.status(400).json({ message: "Invalid order ID" });
         }
 
-        const order = await Order.findByPk(orderId);
+        const order = await Order.findByPk(orderId, {
+            include: [
+                { model: User, as: "user", attributes: ["id", "name", "email"] },
+                {
+                    model: OrderItem,
+                    as: "orderItems",
+                    include: [{ model: Product, as: "product", attributes: ["id", "name", "price"] }]
+                }
+            ]
+        });
+        
         if (!order) {
-            return res.status(404).json({ success: false, message: "Order not found" });
+            return res.status(404).json({ message: "Order not found" });
         }
 
-        order.status = status;
-        await order.save();
+        if (!status) {
+            return res.status(400).json({ message: "Status is required" });
+        }
 
-        return res.status(200).json({ success: true, message: "Order status updated", order });
+        // Normalize status to Title Case (e.g., "shipped" -> "Shipped")
+        const formattedStatus = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+
+        const validStatuses = ["Pending", "Confirmed", "Processing", "Shipped", "Delivered", "Cancelled"];
+        if (!validStatuses.includes(formattedStatus)) {
+            return res.status(400).json({ message: "Invalid status value" });
+        }
+
+        if (order.status === formattedStatus) {
+             return res.status(400).json({ message: `Order is already marked as ${formattedStatus}` });
+        }
+
+        const allowedTransitions = {
+            "Pending": ["Confirmed", "Processing", "Shipped", "Delivered", "Cancelled"],
+            "Confirmed": ["Processing", "Shipped", "Delivered", "Cancelled"],
+            "Processing": ["Shipped", "Delivered", "Cancelled"],
+            "Shipped": ["Delivered", "Cancelled"],
+            "Delivered": [], // Terminal state
+            "Cancelled": []  // Terminal state
+        };
+
+        if (!allowedTransitions[order.status].includes(formattedStatus)) {
+            return res.status(400).json({ 
+                message: `Invalid status transition from ${order.status} to ${formattedStatus}` 
+            });
+        }
+
+        const t = await sequelize.transaction();
+        try {
+            order.status = formattedStatus;
+            await order.save({ transaction: t });
+
+            if (formattedStatus === "Cancelled") {
+                await restoreOrderStock(order.orderItems, t);
+            }
+
+            await t.commit();
+        } catch (err) {
+            await t.rollback();
+            throw err;
+        }
+
+        const orderJSON = order.toJSON();
+        if (orderJSON.orderItems) {
+            orderJSON.orderItems = orderJSON.orderItems.map(item => {
+                if (!item.product) {
+                    item.product = {
+                        id: item.productId,
+                        name: "Product Unavailable/Deleted",
+                        price: item.price
+                    };
+                }
+                return item;
+            });
+        }
+
+        return res.status(200).json({ message: "Order status updated", order: orderJSON });
     } catch (error) {
         console.error("Update order status error:", error);
-        return res.status(500).json({ success: false, message: "Server error", error: error.message });
+        return res.status(500).json({ message: "Server error", error: error.message });
     }
 };
 
 // 5. Admin: View All Orders
 exports.getAllOrders = async (req, res) => {
     try {
+        const { status, userId, date, orderId, sortBy, sortOrder } = req.query;
+
+        const whereClause = {};
+
+        if (orderId) {
+            whereClause.id = orderId;
+        }
+        if (status) {
+            whereClause.status = status;
+        }
+        if (userId) {
+            whereClause.userId = userId;
+        }
+        if (date) {
+            const startDate = new Date(date);
+            const endDate = new Date(startDate);
+            endDate.setDate(endDate.getDate() + 1);
+            whereClause.createdAt = {
+                [Op.gte]: startDate,
+                [Op.lt]: endDate
+            };
+        }
+
+        const orderClause = [];
+        if (sortBy) {
+            const order = (sortOrder && sortOrder.toUpperCase() === "ASC") ? "ASC" : "DESC";
+            orderClause.push([sortBy, order]);
+        } else {
+            orderClause.push(["createdAt", "DESC"]);
+        }
+
         const orders = await Order.findAndCountAll({
+            where: whereClause,
             include: [
-                { model: User, as: "user", attributes: ["id", "name", "email"] }
+                { model: User, as: "user", attributes: ["id", "name", "email"] },
+                {
+                    model: OrderItem,
+                    as: "orderItems",
+                    include: [{ model: Product, as: "product", attributes: ["id", "name", "price"] }]
+                }
             ],
-            order: [["createdAt", "DESC"]],
+            order: orderClause,
             limit: req.pagination.limit,
             offset: req.pagination.offset
         });
 
-        return res.sendPaginated(orders.rows, orders.count, "orders", { success: true });
+        // Handle deleted products
+        const formattedOrders = orders.rows.map(order => {
+            const orderJSON = order.toJSON();
+            if (orderJSON.orderItems) {
+                orderJSON.orderItems = orderJSON.orderItems.map(item => {
+                    if (!item.product) {
+                        item.product = {
+                            id: item.productId,
+                            name: "Product Unavailable/Deleted",
+                            price: item.price
+                        };
+                    }
+                    return item;
+                });
+            }
+            return orderJSON;
+        });
+
+        return res.sendPaginated(formattedOrders, orders.count, "orders");
     } catch (error) {
         console.error("Get all orders error:", error);
-        return res.status(500).json({ success: false, message: "Server error", error: error.message });
+        return res.status(500).json({ message: "Server error", error: error.message });
+    }
+};
+// 7. User: Cancel Order
+exports.cancelOrder = async (req, res) => {
+    try {
+        const orderId = req.params.id;
+        if (isNaN(orderId)) {
+            return res.status(400).json({ message: "Invalid order ID" });
+        }
+
+        const order = await Order.findOne({
+            where: { id: orderId, userId: req.user.id },
+            include: [
+                {
+                    model: OrderItem,
+                    as: "orderItems"
+                }
+            ]
+        });
+
+        if (!order) {
+            return res.status(404).json({ message: "Order not found" });
+        }
+
+        if (order.status !== "Pending" && order.status !== "Confirmed") {
+            return res.status(400).json({ message: `Cannot cancel order in ${order.status} status` });
+        }
+
+        const t = await sequelize.transaction();
+        try {
+            order.status = "Cancelled";
+            await order.save({ transaction: t });
+            await restoreOrderStock(order.orderItems, t);
+            await t.commit();
+        } catch (err) {
+            await t.rollback();
+            throw err;
+        }
+
+        return res.status(200).json({ message: "Order cancelled successfully" });
+    } catch (error) {
+        console.error("Cancel order error:", error);
+        return res.status(500).json({ message: "Server error", error: error.message });
     }
 };
