@@ -93,7 +93,7 @@ router.delete("/subcategories/:id", subcategoryController.deleteSubcategory);
 
 // ─── PRODUCT MANAGEMENT ───────────────────────────────────────────────────────
 
-// GET /admins/products   (filter: ?status=Pending)
+// GET /admins/products   (filters: ?status=Pending, ?sellerId=123)
 router.get("/products", paginate, productController.getAllProductsAdmin);
 
 // GET /admins/products/:id 
@@ -129,7 +129,8 @@ router.get("/users", paginate, adminController.getAllUsers);
 // GET /admins/users/:id  (supports ?withDeleted=true)
 router.get("/users/:id", adminController.getUserById);
 
-// PATCH /admins/users/:id/block|unblock 
+// PATCH /admins/users/:id/block|unblock and roles
+router.put("/users/:id/roles", adminController.updateUserRoles);
 router.patch("/users/:id/block", adminController.blockUser);
 router.patch("/users/:id/unblock", adminController.unblockUser);
 

@@ -1,4 +1,4 @@
-const { User, Category, Subcategory, Product } = require("../models");
+const { User, Role, Category, Subcategory, Product } = require("../models");
 const { Op } = require("sequelize");
 const { sanitizeUser } = require("../helpers/utils");
 const { hashPassword, comparePassword } = require("../middleware/auth");
@@ -6,10 +6,10 @@ const { hashPassword, comparePassword } = require("../middleware/auth");
 exports.getAdminProfile = async (req, res) => {
     try {
         const admin = await User.findByPk(req.user.id, {
-            attributes: { exclude: ["password"] }
+            attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires", "deletedAt"] }
         });
 
-        if (!admin || (admin.role !== "admin" && admin.role !== "superadmin")) {
+        if (!admin || (!(admin.roles && admin.roles.some(r => r.name === "admin")) && !(admin.roles && admin.roles.some(r => r.name === "superadmin")))) {
             return res.status(404).json({ message: "Admin profile not found" });
         }
 
@@ -25,7 +25,7 @@ exports.getAdminProfile = async (req, res) => {
 exports.updateAdminProfile = async (req, res) => {
     try {
         const admin = await User.findByPk(req.user.id);
-        if (!admin || (admin.role !== "admin" && admin.role !== "superadmin")) {
+        if (!admin || (!(admin.roles && admin.roles.some(r => r.name === "admin")) && !(admin.roles && admin.roles.some(r => r.name === "superadmin")))) {
             return res.status(404).json({ message: "Admin profile not found" });
         }
 
@@ -72,12 +72,19 @@ exports.approveSeller = async (req, res) => {
     try {
         const sellerId = req.params.id || req.params.sellerId;
 
-        const seller = await User.findByPk(sellerId);
-        if (!seller || seller.role !== "seller") {
-            return res.status(404).json({ message: "Seller not found" });
+        const seller = await User.findByPk(sellerId, { include: ['roles'] });
+        
+        // Allow approving if they applied to be a seller (sellerStatus = Pending) or are already a seller
+        if (!seller || (seller.sellerStatus === "None" && !(seller.roles && seller.roles.some(r => r.name === "seller")))) {
+            return res.status(404).json({ message: "Seller application not found" });
         }
 
-        await seller.update({ status: "Active" });
+        await seller.update({ sellerStatus: "Approved", status: "Active" });
+
+        const roleRecord = await Role.findOne({ where: { name: "seller" } });
+        if (roleRecord) {
+            await seller.addRole(roleRecord);
+        }
 
         return res.status(200).json({
             message: "Seller approved successfully by Admin",
@@ -94,12 +101,14 @@ exports.approveSeller = async (req, res) => {
 exports.suspendSeller = async (req, res) => {
     try {
         const sellerId = req.params.id || req.params.sellerId;
-        const seller = await User.findByPk(sellerId);
-        if (!seller || seller.role !== "seller") {
+        const seller = await User.findByPk(sellerId, { include: ['roles'] });
+        
+        // Allowed if they are already an approved seller, or if they applied
+        if (!seller || (seller.sellerStatus === "None" && !(seller.roles && seller.roles.some(r => r.name === "seller")))) {
             return res.status(404).json({ message: "Seller not found" });
         }
 
-        await seller.update({ status: "Blocked" });
+        await seller.update({ sellerStatus: "Suspended" });
 
         return res.status(200).json({
             message: "Seller blocked successfully by Admin",
@@ -117,22 +126,22 @@ exports.suspendSeller = async (req, res) => {
 exports.getOverview = async (req, res) => {
     try {
         const [userCount, sellerCount, adminCount, categoryCount, subcategoryCount, pendingSellersCount, productsCount, pendingProductsCount] = await Promise.all([
-            User.count({ where: { role: 'user' } }),
-            User.count({ where: { role: 'seller' } }),
-            User.count({ where: { role: 'admin' } }),
+            User.count({ include: [{ model: Role, as: 'roles', where: { name: 'user' } }] }),
+            User.count({ include: [{ model: Role, as: 'roles', where: { name: 'seller' } }] }),
+            User.count({ include: [{ model: Role, as: 'roles', where: { name: 'admin' } }] }),
             Category.count(),
             Subcategory.count(),
-            User.count({ where: { role: 'seller', status: 'Pending' } }),
+            User.count({ where: { status: 'Pending' }, include: [{ model: Role, as: 'roles', where: { name: 'seller' } }] }),
             Product.count(),
             Product.count({ where: { status: 'Pending' } })
         ]);
 
-        const { limit, offset } = req.pagination;
+        const [users, sellers, admins, categories] = await Promise.all([
+            User.findAll({ include: [{ model: Role, as: 'roles', where: { name: 'user' } }], attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires"] }, ...req.query.pagination }),
+            User.findAll({ include: [{ model: Role, as: 'roles', where: { name: 'seller' } }], attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires"] }, ...req.query.pagination }),
+            User.findAll({ include: [{ model: Role, as: 'roles', where: { name: 'admin' } }], attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires"] }, ...req.query.pagination }),
+            Category.findAll({ include: [{ model: Subcategory, as: "subcategories" }], ...req.query.pagination })
 
-        const [users, sellers, categories] = await Promise.all([
-            User.findAll({ where: { role: 'user' }, attributes: { exclude: ["password"] }, limit, offset }),
-            User.findAll({ where: { role: 'seller' }, attributes: { exclude: ["password"] }, limit, offset }),
-            Category.findAll({ include: [{ model: Subcategory, as: "subcategories" }], limit, offset })
         ]);
 
         const overviewData = {
@@ -145,8 +154,9 @@ exports.getOverview = async (req, res) => {
             totalPendingProducts: pendingProductsCount
         };
 
-        if (req.user && req.user.role === 'superadmin') {
+        if (req.user && req.user.roles && req.user.roles.includes("superadmin")) {
             overviewData.totalAdmins = adminCount;
+            overviewData.admins = admins;
         }
 
         return res.status(200).json({
@@ -167,7 +177,7 @@ exports.getAllAdmins = async (req, res) => {
     try {
         const { search, sortBy, sortOrder } = req.query;
         const whereCondition = { role: 'admin' };
-        
+
         if (search) {
             whereCondition[Op.or] = [
                 { name: { [Op.like]: `%${search}%` } },
@@ -184,7 +194,7 @@ exports.getAllAdmins = async (req, res) => {
 
         const admins = await User.findAll({
             where: whereCondition,
-            attributes: { exclude: ["password"] },
+            attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires"] },
             order: orderClause
         });
         return res.status(200).json(admins);
@@ -199,8 +209,8 @@ exports.getAllAdmins = async (req, res) => {
 exports.getAdminById = async (req, res) => {
     try {
         const admin = await User.findOne({
-            where: { id: req.params.id, role: 'admin' },
-            attributes: { exclude: ["password"] }
+            where: { id: req.params.id }, include: [{ model: Role, as: 'roles', where: { name: 'admin' } }],
+            attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires"] }
         });
         if (!admin) {
             return res.status(404).json({ message: "Admin not found" });
@@ -216,7 +226,7 @@ exports.getAdminById = async (req, res) => {
 
 exports.updateAdmin = async (req, res) => {
     try {
-        const admin = await User.findOne({ where: { id: req.params.id, role: 'admin' } });
+        const admin = await User.findOne({ where: { id: req.params.id }, include: [{ model: Role, as: 'roles', where: { name: 'admin' } }] });
         if (!admin) {
             return res.status(404).json({ message: "Admin not found" });
         }
@@ -248,7 +258,7 @@ exports.updateAdmin = async (req, res) => {
 
 exports.suspendAdmin = async (req, res) => {
     try {
-        const admin = await User.findOne({ where: { id: req.params.id, role: 'admin' } });
+        const admin = await User.findOne({ where: { id: req.params.id }, include: [{ model: Role, as: 'roles', where: { name: 'admin' } }] });
         if (!admin) {
             return res.status(404).json({ message: "Admin not found" });
         }
@@ -264,7 +274,7 @@ exports.suspendAdmin = async (req, res) => {
 
 exports.unsuspendAdmin = async (req, res) => {
     try {
-        const admin = await User.findOne({ where: { id: req.params.id, role: 'admin' } });
+        const admin = await User.findOne({ where: { id: req.params.id }, include: [{ model: Role, as: 'roles', where: { name: 'admin' } }] });
         if (!admin) {
             return res.status(404).json({ message: "Admin not found" });
         }
@@ -305,8 +315,7 @@ exports.getAllUsers = async (req, res) => {
             attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires"] },
             paranoid: withDeleted === "true" ? false : true,
             order: orderClause,
-            limit: req.pagination.limit,
-            offset: req.pagination.offset
+            ...req.query.pagination
         });
 
         return res.sendPaginated(rows, count, "users");
@@ -323,7 +332,7 @@ exports.getUserById = async (req, res) => {
         const { withDeleted } = req.query;
 
         const user = await User.findOne({
-            where: { id: req.params.id, role: "user" },
+            where: { id: req.params.id }, include: [{ model: Role, as: 'roles', where: { name: 'user' } }],
             attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires"] },
             paranoid: withDeleted === "true" ? false : true
         });
@@ -343,7 +352,7 @@ exports.getUserById = async (req, res) => {
 
 exports.blockUser = async (req, res) => {
     try {
-        const user = await User.findOne({ where: { id: req.params.id, role: "user" } });
+        const user = await User.findOne({ where: { id: req.params.id }, include: [{ model: Role, as: 'roles', where: { name: 'user' } }] });
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
@@ -364,7 +373,7 @@ exports.blockUser = async (req, res) => {
 
 exports.unblockUser = async (req, res) => {
     try {
-        const user = await User.findOne({ where: { id: req.params.id, role: "user" } });
+        const user = await User.findOne({ where: { id: req.params.id }, include: [{ model: Role, as: 'roles', where: { name: 'user' } }] });
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
@@ -385,7 +394,7 @@ exports.unblockUser = async (req, res) => {
 
 exports.softDeleteUser = async (req, res) => {
     try {
-        const user = await User.findOne({ where: { id: req.params.id, role: "user" } });
+        const user = await User.findOne({ where: { id: req.params.id }, include: [{ model: Role, as: 'roles', where: { name: 'user' } }] });
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
@@ -403,7 +412,7 @@ exports.softDeleteUser = async (req, res) => {
 
 exports.restoreUser = async (req, res) => {
     try {
-        const user = await User.findOne({ where: { id: req.params.id, role: "user" }, paranoid: false });
+        const user = await User.findOne({ where: { id: req.params.id }, include: [{ model: Role, as: 'roles', where: { name: 'user' } }], paranoid: false });
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
@@ -428,7 +437,7 @@ exports.restoreUser = async (req, res) => {
 
 exports.forceDeleteUser = async (req, res) => {
     try {
-        const user = await User.findOne({ where: { id: req.params.id, role: "user" }, paranoid: false });
+        const user = await User.findOne({ where: { id: req.params.id }, include: [{ model: Role, as: 'roles', where: { name: 'user' } }], paranoid: false });
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
@@ -444,12 +453,60 @@ exports.forceDeleteUser = async (req, res) => {
     }
 };
 
+exports.updateUserRoles = async (req, res) => {
+    try {
+        const { roles } = req.body;
+        if (!roles || !Array.isArray(roles) || roles.length === 0) {
+            return res.status(400).json({ message: "Roles array is required" });
+        }
+
+        const lowerRoles = roles.map(r => r.toLowerCase());
+
+        // Security Check: Only a SuperAdmin can assign the 'admin' or 'superadmin' roles
+        if (lowerRoles.includes("admin") || lowerRoles.includes("superadmin")) {
+            const isSuperAdmin = req.user && req.user.roles && req.user.roles.includes("superadmin");
+            if (!isSuperAdmin) {
+                return res.status(403).json({ message: "Only a SuperAdmin can assign 'admin' or 'superadmin' roles." });
+            }
+        }
+
+        const user = await User.findByPk(req.params.id);
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // Fetch role records from DB matching the provided names
+        const dbRoles = await Role.findAll({
+            where: {
+                name: { [Op.in]: lowerRoles }
+            }
+        });
+
+        if (dbRoles.length !== roles.length) {
+            return res.status(400).json({ message: "One or more provided roles are invalid" });
+        }
+
+        // Assign the roles to the user using the Sequelize auto-generated method for Many-to-Many
+        await user.setRoles(dbRoles);
+
+        return res.status(200).json({
+            message: "User roles updated successfully",
+            assignedRoles: dbRoles.map(r => r.name)
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: "Failed to update user roles",
+            error: "An internal server error occurred"
+        });
+    }
+};
+
 exports.getAllSellers = async (req, res) => {
     try {
         const { status, search, sortBy, sortOrder } = req.query;
-        const whereCondition = { role: "seller" };
+        const whereCondition = { sellerStatus: { [Op.ne]: "None" } };
         if (status) {
-            whereCondition.status = status;
+            whereCondition.sellerStatus = status;
         }
         if (search) {
             whereCondition[Op.or] = [
@@ -469,8 +526,7 @@ exports.getAllSellers = async (req, res) => {
             where: whereCondition,
             attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires"] },
             order: orderClause,
-            limit: req.pagination.limit,
-            offset: req.pagination.offset
+            ...req.query.pagination
         });
 
         return res.sendPaginated(rows, count, "sellers");
@@ -485,7 +541,7 @@ exports.getAllSellers = async (req, res) => {
 exports.getSellerById = async (req, res) => {
     try {
         const seller = await User.findOne({
-            where: { id: req.params.id, role: "seller" },
+            where: { id: req.params.id }, include: [{ model: Role, as: 'roles', where: { name: 'seller' } }],
             attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires"] }
         });
 
@@ -504,7 +560,7 @@ exports.getSellerById = async (req, res) => {
 
 exports.updateSellerById = async (req, res) => {
     try {
-        const seller = await User.findOne({ where: { id: req.params.id, role: "seller" } });
+        const seller = await User.findOne({ where: { id: req.params.id }, include: [{ model: Role, as: 'roles', where: { name: 'seller' } }] });
         if (!seller) {
             return res.status(404).json({ message: "Seller not found" });
         }
@@ -544,7 +600,7 @@ exports.updateSellerById = async (req, res) => {
 
 exports.deleteSellerById = async (req, res) => {
     try {
-        const seller = await User.findOne({ where: { id: req.params.id, role: "seller" } });
+        const seller = await User.findOne({ where: { id: req.params.id }, include: [{ model: Role, as: 'roles', where: { name: 'seller' } }] });
         if (!seller) {
             return res.status(404).json({ message: "Seller not found" });
         }
@@ -562,7 +618,7 @@ exports.deleteSellerById = async (req, res) => {
 
 exports.restoreSeller = async (req, res) => {
     try {
-        const seller = await User.findOne({ where: { id: req.params.id, role: "seller" }, paranoid: false });
+        const seller = await User.findOne({ where: { id: req.params.id }, include: [{ model: Role, as: 'roles', where: { name: 'seller' } }], paranoid: false });
         if (!seller) {
             return res.status(404).json({ message: "Seller not found" });
         }
@@ -587,7 +643,7 @@ exports.restoreSeller = async (req, res) => {
 
 exports.forceDeleteSeller = async (req, res) => {
     try {
-        const seller = await User.findOne({ where: { id: req.params.id, role: "seller" }, paranoid: false });
+        const seller = await User.findOne({ where: { id: req.params.id }, include: [{ model: Role, as: 'roles', where: { name: 'seller' } }], paranoid: false });
         if (!seller) {
             return res.status(404).json({ message: "Seller not found" });
         }
@@ -609,7 +665,7 @@ exports.getAllCategories = async (req, res) => {
         const include = [];
 
         // SuperAdmins can see which admin created the category
-        if (req.user && req.user.role === 'superadmin') {
+        if (req.user && req.user.roles && req.user.roles.includes("superadmin")) {
             include.push({
                 model: User,
                 as: "admin",
@@ -629,7 +685,7 @@ exports.getAllCategories = async (req, res) => {
             orderClause.push(["createdAt", "DESC"]);
         }
 
-        const categories = await Category.findAll({ 
+        const categories = await Category.findAll({
             where: whereCondition,
             include,
             order: orderClause
@@ -652,7 +708,7 @@ exports.getAllSubcategories = async (req, res) => {
         }];
 
         // SuperAdmins can see which admin created the subcategory
-        if (req.user && req.user.role === 'superadmin') {
+        if (req.user && req.user.roles && req.user.roles.includes("superadmin")) {
             include.push({
                 model: User,
                 as: "admin",
@@ -675,10 +731,11 @@ exports.getAllSubcategories = async (req, res) => {
             orderClause.push(["createdAt", "DESC"]);
         }
 
-        const subcategories = await Subcategory.findAll({ 
+        const subcategories = await Subcategory.findAll({
             where: whereCondition,
             include,
-            order: orderClause
+            order: orderClause,
+            ...(req.query.pagination || {})
         });
         return res.status(200).json(subcategories);
     } catch (error) {
@@ -698,7 +755,7 @@ exports.getCategoryById = async (req, res) => {
             }
         ];
 
-        if (req.user && req.user.role === 'superadmin') {
+        if (req.user && req.user.roles && req.user.roles.includes("superadmin")) {
             include.push({
                 model: User,
                 as: "admin",
@@ -726,7 +783,7 @@ exports.getSubcategoryById = async (req, res) => {
             as: "category"
         }];
 
-        if (req.user && req.user.role === 'superadmin') {
+        if (req.user && req.user.roles && req.user.roles.includes("superadmin")) {
             include.push({
                 model: User,
                 as: "admin",

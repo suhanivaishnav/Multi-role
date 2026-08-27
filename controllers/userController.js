@@ -1,4 +1,4 @@
-const { User } = require("../models");
+const { User, Role } = require("../models");
 const { sanitizeUser } = require("../helpers/utils");
 const { hashPassword, comparePassword, generateToken } = require("../middleware/auth");
 const { syncGuestCart } = require("./cartController");
@@ -23,12 +23,17 @@ exports.registerUser = async (req, res) => {
             email,
             password: hashedPassword,
             phone,
-            role: "user",
-            status: "Active"
+            status: "Active",
+            sellerStatus: req.body.applySeller ? "Pending" : "None"
         });
 
+        const roleRecord = await Role.findOne({ where: { name: "user" } });
+        if (roleRecord) {
+            await user.addRole(roleRecord);
+        }
+
         // Generate token immediately so the client can use it right after registering
-        const token = generateToken({ id: user.id, role: user.role });
+        const token = generateToken({ id: user.id, roles: ["user"] });
 
         // Sync guest cart if provided
         let cartSync = null;
@@ -58,7 +63,7 @@ exports.registerUser = async (req, res) => {
 exports.getProfile = async (req, res) => {
     try {
         const user = await User.findByPk(req.user.id, {
-            attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires"] }
+            attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires", "deletedAt"] }
         });
 
         if (!user) {
@@ -76,7 +81,9 @@ exports.getProfile = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
     try {
-        const user = await User.findByPk(req.user.id);
+        const user = await User.findByPk(req.user.id, {
+            attributes: { exclude: ["deletedAt"] }
+        });
         if (!user) {
             return res.status(404).json({ message: "User profile not found" });
         }
@@ -133,6 +140,35 @@ exports.deleteProfile = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to delete profile",
+            error: "An internal server error occurred"
+        });
+    }
+};
+
+exports.applySeller = async (req, res) => {
+    try {
+        const user = await User.findByPk(req.user.id);
+        if (!user) {
+            return res.status(404).json({ message: "User profile not found" });
+        }
+
+        if (user.sellerStatus === "Approved") {
+            return res.status(400).json({ message: "You are already an approved seller" });
+        }
+
+        if (user.sellerStatus === "Pending") {
+            return res.status(400).json({ message: "Your seller application is already pending" });
+        }
+
+        await user.update({ sellerStatus: "Pending" });
+
+        return res.status(200).json({
+            message: "Successfully applied to become a seller. Please wait for admin approval.",
+            user: sanitizeUser(user)
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: "Failed to apply as a seller",
             error: "An internal server error occurred"
         });
     }

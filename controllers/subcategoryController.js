@@ -37,7 +37,6 @@ exports.createSubcategory = async (req, res) => {
 exports.getAllSubcategories = async (req, res) => {
     try {
         const { search, sortBy, sortOrder, categoryId } = req.query;
-
         const whereCondition = {};
         if (categoryId) {
             whereCondition.categoryId = categoryId;
@@ -60,10 +59,12 @@ exports.getAllSubcategories = async (req, res) => {
                     model: Category,
                     as: "category"
                 }
-            ]
+            ],
+            ...(req.pagination || {})
         });
 
-        return res.status(200).json(subcategories);
+        const count = await Subcategory.count({ where: whereCondition });
+        return res.sendPaginated(subcategories, count);
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch subcategories",

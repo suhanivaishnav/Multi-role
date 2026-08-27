@@ -132,8 +132,7 @@ exports.getMyOrders = async (req, res) => {
                 { model: User, as: "user", attributes: ["id", "name", "email"] }
             ],
             order: orderClause,
-            limit: req.pagination.limit,
-            offset: req.pagination.offset
+            ...req.query.pagination
         });
 
         // Format orders to handle deleted products
@@ -186,7 +185,7 @@ exports.getOrderDetails = async (req, res) => {
         }
 
         // Check authorization (User can only view their own order, Admin/Superadmin can view any from admin panel)
-        if (req.user.role === "user" && order.userId !== req.user.id) {
+        if (req.user.roles && req.user.roles.includes("user") && order.userId !== req.user.id) {
             return res.status(403).json({ message: "Forbidden: You do not have access to this order" });
         }
 
@@ -349,8 +348,7 @@ exports.getAllOrders = async (req, res) => {
                 }
             ],
             order: orderClause,
-            limit: req.pagination.limit,
-            offset: req.pagination.offset
+            ...req.query.pagination
         });
 
         // Handle deleted products

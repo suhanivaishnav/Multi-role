@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { authenticateToken, requireRole } = require("../middleware/auth");
+const { authenticateToken, requireRole, validateRegistration, validateUpdate } = require("../middleware/auth");
 const sellerController = require("../controllers/sellerController");
 const productController = require("../controllers/productController");
 const paginate = require("../middleware/pagination");
@@ -8,8 +8,8 @@ const paginate = require("../middleware/pagination");
 // ─── PUBLIC ROUTES (no auth required) ────────────────────────────────────────
 
 // POST /sellers/register
-router.post("/register", sellerController.registerSeller);
-router.post("/", sellerController.registerSeller);
+router.post("/register", validateRegistration, sellerController.registerSeller);
+router.post("/", validateRegistration, sellerController.registerSeller);
 
 // ─── BASELINE: All routes below require a valid token + Seller role ───────────
 router.use(authenticateToken, requireRole("Seller"));
@@ -20,8 +20,8 @@ router.use(authenticateToken, requireRole("Seller"));
 router.get("/profile", sellerController.getSellerProfile);
 
 // PUT|PATCH /sellers/profile 
-router.put("/profile", sellerController.updateSellerProfile);
-router.patch("/profile", sellerController.updateSellerProfile);
+router.put("/profile", validateUpdate, sellerController.updateSellerProfile);
+router.patch("/profile", validateUpdate, sellerController.updateSellerProfile);
 
 // DELETE /sellers/profile 
 router.delete("/profile", sellerController.deleteSellerProfile);

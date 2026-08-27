@@ -2,23 +2,30 @@ const { Op } = require("sequelize");
 const { Product, User, Category, Subcategory } = require("../models");
 
 // Standard include models configuration
-const getProductIncludes = () => [
-    {
-        model: User,
-        as: "seller",
-        attributes: ["id", "name", "email", "phone", "status", "role"]
-    },
-    {
-        model: Subcategory,
-        as: "subcategory",
-        attributes: [] // Empty array prevents it from showing up in the JSON response, but allows SQL JOINS for categoryId filtering
+const getProductIncludes = (includeSeller = true) => {
+    const includes = [
+        {
+            model: Subcategory,
+            as: "subcategory",
+            attributes: [] // Empty array prevents it from showing up in the JSON response, but allows SQL JOINS for categoryId filtering
+        }
+    ];
+
+    if (includeSeller) {
+        includes.unshift({
+            model: User,
+            as: "seller",
+            attributes: ["id", "name", "email", "phone", "status", "role"]
+        });
     }
-];
+
+    return includes;
+};
 
 // Helper to determine user role category
 const getUserRoleCategory = (user) => {
     if (!user) return "Guest";
-    const role = user.role ? user.role.toLowerCase() : "";
+    const role = (user.roles && user.roles.length > 0 ? user.roles[0].name.toLowerCase() : "");
     if (role === "admin" || role === "superadmin") {
         return "Admin";
     }
@@ -62,7 +69,7 @@ exports.createProduct = async (req, res) => {
 
         // Verify seller exists and is Active
         const seller = await User.findByPk(sellerId);
-        if (!seller || seller.role !== "seller") {
+        if (!seller || !(seller.roles && seller.roles.some(r => r.name === "seller"))) {
             return res.status(404).json({ message: `Seller account with ID ${sellerId} not found` });
         }
         if (seller.status !== "Active") {
@@ -137,17 +144,16 @@ exports.getMyProducts = async (req, res) => {
 
         const { count, rows } = await Product.findAndCountAll({
             where: whereCondition,
-            include: getProductIncludes(),
+            include: getProductIncludes(false),
             order: orderClause,
-            limit: req.pagination.limit,
-            offset: req.pagination.offset,
+            ...req.query.pagination,
             distinct: true
         });
 
         return res.sendPaginated(rows, count, "products", { sellerId });
     } catch (error) {
         return res.status(500).json({
-            message: "Failed to fetch seller products",
+            message: "Failed to fetch products",
             error: error.message
         });
     }
@@ -180,8 +186,7 @@ exports.getAllProductsAdmin = async (req, res) => {
             where: whereCondition,
             include: getProductIncludes(),
             order: orderClause,
-            limit: req.pagination.limit,
-            offset: req.pagination.offset,
+            ...req.query.pagination,
             distinct: true
         });
 
@@ -216,10 +221,9 @@ exports.getProductsByCategory = async (req, res) => {
 
         const { count, rows } = await Product.findAndCountAll({
             where: whereCondition,
-            include: getProductIncludes(),
+            include: getProductIncludes(false),
             order: orderClause,
-            limit: req.pagination.limit,
-            offset: req.pagination.offset,
+            ...req.query.pagination,
             distinct: true
         });
 
@@ -254,10 +258,9 @@ exports.getProductsBySubcategory = async (req, res) => {
 
         const { count, rows } = await Product.findAndCountAll({
             where: whereCondition,
-            include: getProductIncludes(),
+            include: getProductIncludes(false),
             order: orderClause,
-            limit: req.pagination.limit,
-            offset: req.pagination.offset,
+            ...req.query.pagination,
             distinct: true
         });
 
@@ -273,12 +276,11 @@ exports.getProductsBySubcategory = async (req, res) => {
 exports.getAllProducts = async (req, res) => {
     try {
         const {
-            categoryId, subcategoryId, sellerId, search,
+            categoryId, subcategoryId, search,
             minPrice, maxPrice, sortBy, inStock
         } = req.query;
 
         const whereCondition = { status: "Active" };
-        if (sellerId) whereCondition.sellerId = sellerId.split(",").map(id => Number(id.trim()));
 
         // Common filters
         if (categoryId) {
@@ -323,10 +325,9 @@ exports.getAllProducts = async (req, res) => {
 
         const { count, rows } = await Product.findAndCountAll({
             where: whereCondition,
-            include: getProductIncludes(),
+            include: getProductIncludes(false),
             order,
-            limit: req.pagination.limit,
-            offset: req.pagination.offset,
+            ...req.query.pagination,
             distinct: true
         });
 
@@ -341,8 +342,11 @@ exports.getAllProducts = async (req, res) => {
 
 exports.getProductById = async (req, res) => {
     try {
+        const userType = getUserRoleCategory(req.user);
+        const includeSeller = userType === "Admin" || userType === "Seller";
+
         const product = await Product.findByPk(req.params.id, {
-            include: getProductIncludes()
+            include: getProductIncludes(includeSeller)
         });
 
         if (!product) {
@@ -350,8 +354,6 @@ exports.getProductById = async (req, res) => {
         }
 
         if (product.status !== "Active") {
-            const userType = getUserRoleCategory(req.user);
-
             if (userType === "Guest" || userType === "User") {
                 return res.status(404).json({ message: "Product not found or not available" });
             }

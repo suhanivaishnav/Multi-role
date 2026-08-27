@@ -5,11 +5,17 @@ const paginate = (req, res, next) => {
 
     req.pagination = { limit, offset, page };
 
-    // Helper method attached to res to easily format responses
-    res.sendPaginated = (data, count, keyName = "data", extraParams = {}) => {
+    res.sendPaginated = (
+        data,
+        count,
+        keyName = "data",
+        extraParams = {}
+    ) => {
         const totalPages = Math.ceil(count / limit);
+
         return res.status(200).json({
             ...extraParams,
+
             pagination: {
                 totalItems: count,
                 totalPages,

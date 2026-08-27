@@ -1,13 +1,13 @@
 const express = require("express");
 const router = express.Router();
-const { authenticateToken, requireRole, validateUserRegistration, validateUserUpdate } = require("../middleware/auth");
+const { authenticateToken, requireRole, validateRegistration, validateUpdate } = require("../middleware/auth");
 const userController = require("../controllers/userController");
 
 // ─── PUBLIC ROUTES (no auth required) ────────────────────────────────────────
 
 // POST /users/register 
-router.post("/register", validateUserRegistration, userController.registerUser);
-router.post("/", validateUserRegistration, userController.registerUser);
+router.post("/register", validateRegistration, userController.registerUser);
+router.post("/", validateRegistration, userController.registerUser);
 
 // ─── BASELINE: All routes below require a valid token + User role ─────────────
 router.use(authenticateToken, requireRole("User"));
@@ -18,10 +18,13 @@ router.use(authenticateToken, requireRole("User"));
 router.get("/profile", userController.getProfile);
 
 // PUT|PATCH /users/profile 
-router.put("/profile", validateUserUpdate, userController.updateProfile);
-router.patch("/profile", validateUserUpdate, userController.updateProfile);
+router.put("/profile", validateUpdate, userController.updateProfile);
+router.patch("/profile", validateUpdate, userController.updateProfile);
 
 // DELETE /users/profile (soft-delete) 
 router.delete("/profile", userController.deleteProfile);
+
+// POST /apply-seller
+router.post("/apply-seller", userController.applySeller);
 
 module.exports = router;

@@ -25,16 +25,16 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true
       },
 
-      role: {
-        type: DataTypes.ENUM(
-          "user",
-          "seller",
-          "admin",
-          "superadmin"
-        ),
-        allowNull: false,
-        defaultValue: "user"
-      },
+      // role: {
+      //   type: DataTypes.ENUM(
+      //     "user",
+      //     "seller",
+      //     "admin",
+      //     "superadmin"
+      //   ),
+      //   allowNull: false,
+      //   defaultValue: "user"
+      // },
 
       status: {
         type: DataTypes.ENUM(
@@ -59,6 +59,12 @@ module.exports = (sequelize, DataTypes) => {
       deletedAt: {
         type: DataTypes.DATE,
         allowNull: true
+      },
+
+      sellerStatus: {
+        type: DataTypes.ENUM('None', 'Pending', 'Approved', 'Rejected'),
+        allowNull: false,
+        defaultValue: 'None'
       }
     },
     {
@@ -91,6 +97,13 @@ module.exports = (sequelize, DataTypes) => {
     User.hasMany(models.Order, {
       foreignKey: "userId",
       as: "orders"
+    });
+
+    User.belongsToMany(models.Role, {
+      through: "UserRoles",
+      foreignKey: "userId",
+      otherKey: "roleId",
+      as: "roles"
     });
   };
 

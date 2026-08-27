@@ -41,7 +41,7 @@ exports.createCategory = async (req, res) => {
 exports.getAllCategories = async (req, res) => {
     try {
         const { search, sortBy, sortOrder } = req.query;
-        
+
         const whereCondition = {};
         if (search) {
             whereCondition.name = { [Op.like]: `%${search}%` };
@@ -56,9 +56,11 @@ exports.getAllCategories = async (req, res) => {
 
         const categories = await Category.findAll({
             where: whereCondition,
-            order: orderClause
+            order: orderClause,
+            ...(req.pagination || {})
         });
-        return res.status(200).json(categories);
+        const count = await Category.count({ where: whereCondition });
+        return res.sendPaginated(categories, count);
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch categories",

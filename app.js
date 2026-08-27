@@ -2,7 +2,8 @@ const express = require("express");
 const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 dotenv.config();
-const { requestLogger } = require("./middleware/auth");
+const morgan = require('morgan');
+const logger = require('./helpers/logger');
 const categoryRoutes = require("./routes/category");
 const subcategoryRoutes = require("./routes/subcategory");
 const productRoutes = require("./routes/product")
@@ -18,8 +19,8 @@ const app = express();
 
 app.use(express.json());
 
-// Use the middleware
-app.use(requestLogger);
+// Use Morgan for HTTP request logging, piped into Winston
+app.use(morgan('combined', { stream: logger.stream }));
 
 // Apply global rate limiting to all requests
 const globalLimiter = rateLimit({

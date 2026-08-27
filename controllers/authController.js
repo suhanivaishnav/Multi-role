@@ -1,4 +1,5 @@
 const { User } = require("../models");
+const logger = require("../helpers/logger");
 const { Op } = require("sequelize");
 const crypto = require("crypto");
 const { sendPasswordResetEmail } = require("../helpers/email");
@@ -14,7 +15,7 @@ exports.loginUser = async (req, res) => {
             return res.status(400).json({ message: "Email and password are required" });
         }
 
-        const user = await User.findOne({ where: { email } });
+        const user = await User.findOne({ where: { email }, include: ['roles'] });
         if (!user) {
             return res.status(401).json({ message: "Invalid email or password" });
         }
@@ -34,7 +35,7 @@ exports.loginUser = async (req, res) => {
 
         const token = generateToken({
             id: user.id,
-            role: user.role
+            roles: user.roles ? user.roles.map(r => r.name) : []
         });
 
         const userJson = sanitizeUser(user);
@@ -57,6 +58,7 @@ exports.loginUser = async (req, res) => {
             ...(cartSync && { cartSync })
         });
     } catch (error) {
+        logger.error("Error during login", error);
         return res.status(500).json({
             message: "Failed to login",
             error: "An internal server error occurred"

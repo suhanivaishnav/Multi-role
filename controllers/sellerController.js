@@ -1,4 +1,4 @@
-const { User } = require("../models");
+const { User, Role } = require("../models");
 const { sanitizeUser } = require("../helpers/utils");
 const { hashPassword, comparePassword } = require("../middleware/auth");
 
@@ -22,9 +22,14 @@ exports.registerSeller = async (req, res) => {
             email,
             password: hashedPassword,
             phone: phone || null,
-            role: "seller",
-            status: "Pending"
+            status: "Active",
+            sellerStatus: "Pending"
         });
+
+        const roleRecord = await Role.findOne({ where: { name: "user" } });
+        if (roleRecord) {
+            await sellerUser.addRole(roleRecord);
+        }
 
         return res.status(201).json({
             message: "Seller registered successfully and is pending approval",
@@ -41,8 +46,8 @@ exports.registerSeller = async (req, res) => {
 exports.getSellerProfile = async (req, res) => {
     try {
         const seller = await User.findOne({
-            where: { id: req.user.id, role: "seller" },
-            attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires"] }
+            where: { id: req.user.id }, include: [{ model: Role, as: 'roles', where: { name: 'seller' } }],
+            attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires", "deletedAt"] }
         });
 
         if (!seller) {
@@ -60,7 +65,10 @@ exports.getSellerProfile = async (req, res) => {
 
 exports.updateSellerProfile = async (req, res) => {
     try {
-        const seller = await User.findOne({ where: { id: req.user.id, role: "seller" } });
+        const seller = await User.findOne({
+            where: { id: req.user.id }, include: [{ model: Role, as: 'roles', where: { name: 'seller' } }],
+            attributes: { exclude: ["deletedAt"] }
+        });
         if (!seller) {
             return res.status(404).json({ message: "Seller profile not found" });
         }
@@ -106,7 +114,7 @@ exports.updateSellerProfile = async (req, res) => {
 
 exports.deleteSellerProfile = async (req, res) => {
     try {
-        const seller = await User.findOne({ where: { id: req.user.id, role: "seller" } });
+        const seller = await User.findOne({ where: { id: req.user.id }, include: [{ model: Role, as: 'roles', where: { name: 'seller' } }] });
         if (!seller) {
             return res.status(404).json({ message: "Seller profile not found" });
         }

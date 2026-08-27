@@ -4,14 +4,7 @@ const { User } = require('../models');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// Create a simple logging middleware
-function requestLogger(req, res, next) {
-    const timestamp = new Date().toISOString();
-    console.log(`${timestamp} - ${req.method} ${req.url}`);
-    next(); // Don't forget to call next()
-}
-
-const validateUserRegistration = (req, res, next) => {
+const validateRegistration = (req, res, next) => {
     const { email, password } = req.body;
     const errors = [];
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -30,7 +23,7 @@ const validateUserRegistration = (req, res, next) => {
     next();
 };
 
-const validateUserUpdate = (req, res, next) => {
+const validateUpdate = (req, res, next) => {
     const { email, phone, password } = req.body;
     const errors = [];
 
@@ -88,14 +81,16 @@ const authenticate = (req, res, next) => {
         }
 
         try {
-            const user = await User.findByPk(decoded.id);
+            const user = await User.findByPk(decoded.id, {
+                include: ['roles']
+            });
             if (!user) {
                 return res.status(401).json({ message: 'Account no longer exists' });
             }
             if (user.status !== "Active") {
                 return res.status(403).json({ message: `Account is ${user.status.toLowerCase()}` });
             }
-            req.user = { ...decoded, role: user.role };
+            req.user = { ...decoded, roles: user.roles ? user.roles.map(r => r.name) : [] };
             next();
         } catch (dbErr) {
             return res.status(500).json({ message: 'Authentication error' });
@@ -111,10 +106,12 @@ const authorize = (...roles) => {
             return res.status(401).json({ message: 'Unauthorized' });
         }
 
-        const userRole = req.user.role ? req.user.role.toLowerCase() : "";
+        const userRoles = req.user.roles ? req.user.roles.map(r => r.toLowerCase()) : [];
         const allowedRoles = roles.map(r => r.toLowerCase());
 
-        if (allowedRoles.includes(userRole)) {
+        const hasAccess = userRoles.some(role => allowedRoles.includes(role));
+
+        if (hasAccess) {
             return next();
         }
 
@@ -123,9 +120,8 @@ const authorize = (...roles) => {
 };
 
 module.exports = {
-    requestLogger,
-    validateUserRegistration,
-    validateUserUpdate,
+    validateRegistration,
+    validateUpdate,
     hashPassword,
     comparePassword,
     generateToken,
