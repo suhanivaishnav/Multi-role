@@ -24,7 +24,9 @@ exports.getAdminProfile = async (req, res) => {
 
 exports.updateAdminProfile = async (req, res) => {
     try {
-        const admin = await User.findByPk(req.user.id);
+        const admin = await User.findByPk(req.user.id, {
+            attributes: { exclude: ["deletedAt"] }
+        });
         if (!admin || (!(admin.roles && admin.roles.some(r => r.name === "admin")) && !(admin.roles && admin.roles.some(r => r.name === "superadmin")))) {
             return res.status(404).json({ message: "Admin profile not found" });
         }
@@ -73,7 +75,7 @@ exports.approveSeller = async (req, res) => {
         const sellerId = req.params.id || req.params.sellerId;
 
         const seller = await User.findByPk(sellerId, { include: ['roles'] });
-        
+
         // Allow approving if they applied to be a seller (sellerStatus = Pending) or are already a seller
         if (!seller || (seller.sellerStatus === "None" && !(seller.roles && seller.roles.some(r => r.name === "seller")))) {
             return res.status(404).json({ message: "Seller application not found" });
@@ -102,7 +104,7 @@ exports.suspendSeller = async (req, res) => {
     try {
         const sellerId = req.params.id || req.params.sellerId;
         const seller = await User.findByPk(sellerId, { include: ['roles'] });
-        
+
         // Allowed if they are already an approved seller, or if they applied
         if (!seller || (seller.sellerStatus === "None" && !(seller.roles && seller.roles.some(r => r.name === "seller")))) {
             return res.status(404).json({ message: "Seller not found" });

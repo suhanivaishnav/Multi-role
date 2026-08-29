@@ -147,7 +147,7 @@ exports.deleteProfile = async (req, res) => {
 
 exports.applySeller = async (req, res) => {
     try {
-        const user = await User.findByPk(req.user.id);
+        const user = await User.findByPk(req.user.id, { attributes: { exclude: ["deletedAt"] } });
         if (!user) {
             return res.status(404).json({ message: "User profile not found" });
         }
