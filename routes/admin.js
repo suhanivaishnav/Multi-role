@@ -48,7 +48,7 @@ router.put("/sellers/:id/restore", adminController.restoreSeller);
 router.delete("/sellers/:id", adminController.deleteSellerById);
 
 // DELETE /admins/sellers/:id/force  (SuperAdmin only) 
-router.delete("/sellers/:id/force", requireRole("SuperAdmin"), adminController.forceDeleteSeller);
+// Force delete removed
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
 
@@ -140,9 +140,6 @@ router.delete("/users/:id", adminController.softDeleteUser);
 // PATCH /admins/users/:id/restore 
 router.patch("/users/:id/restore", adminController.restoreUser);
 router.put("/users/:id/restore", adminController.restoreUser);
-
-// DELETE /admins/users/:id/force  (SuperAdmin only) 
-router.delete("/users/:id/force", requireRole("SuperAdmin"), adminController.forceDeleteUser);
 
 // ─── ORDER MANAGEMENT ─────────────────────────────────────────────────────────
 

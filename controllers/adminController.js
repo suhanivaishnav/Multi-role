@@ -470,8 +470,8 @@ exports.updateUserRoles = async (req, res) => {
             return res.status(400).json({ message: "Roles array is required" });
         }
 
-        const lowerRoles = roles.map(r => r.toLowerCase());
-        
+        const lowerRoles = [...new Set(roles.map(r => r.toLowerCase()))];
+
         if (!lowerRoles.includes("user")) {
             lowerRoles.push("user");
         }
@@ -496,7 +496,7 @@ exports.updateUserRoles = async (req, res) => {
             }
         });
 
-        if (dbRoles.length !== roles.length) {
+        if (dbRoles.length !== lowerRoles.length) {
             return res.status(400).json({ message: "One or more provided roles are invalid" });
         }
 
@@ -654,42 +654,36 @@ exports.deleteSellerById = async (req, res) => {
 
 exports.restoreSeller = async (req, res) => {
     try {
-        const seller = await User.findOne({ where: { id: req.params.id }, include: [{ model: Role, as: 'roles', where: { name: 'seller' } }], paranoid: false });
-        if (!seller) {
-            return res.status(404).json({ message: "Seller not found" });
+        const sellerId = req.params.id;
+        const user = await User.findByPk(sellerId, { include: ["roles"] });
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
         }
 
-        if (!seller.deletedAt) {
-            return res.status(400).json({ message: "Seller is not deleted" });
+        const roleRecord = await Role.findOne({ where: { name: "seller" } });
+        if (!roleRecord) {
+            return res.status(500).json({ message: "Seller role not found in database" });
         }
 
-        await seller.restore();
+        const t = await sequelize.transaction();
+        try {
+            await user.addRole(roleRecord, { transaction: t });
+            user.sellerStatus = "Approved";
+            await user.save({ transaction: t });
+            await t.commit();
 
-        return res.status(200).json({
-            message: "Seller restored successfully",
-            seller: sanitizeUser(seller)
-        });
+            return res.status(200).json({
+                message: "Seller restored and approved successfully"
+            });
+        } catch (txError) {
+            await t.rollback();
+            throw txError;
+        }
+
     } catch (error) {
         return res.status(500).json({
             message: "Failed to restore seller",
-            error: "An internal server error occurred"
-        });
-    }
-};
-
-exports.forceDeleteSeller = async (req, res) => {
-    try {
-        const seller = await User.findOne({ where: { id: req.params.id }, include: [{ model: Role, as: 'roles', where: { name: 'seller' } }], paranoid: false });
-        if (!seller) {
-            return res.status(404).json({ message: "Seller not found" });
-        }
-
-        await seller.destroy({ force: true }); // Hard/permanent deletion
-
-        return res.status(200).json({ message: "Seller permanently deleted from database" });
-    } catch (error) {
-        return res.status(500).json({
-            message: "Failed to permanently delete seller",
             error: "An internal server error occurred"
         });
     }
@@ -700,12 +694,11 @@ exports.getAllCategories = async (req, res) => {
         const { search, sortBy, sortOrder } = req.query;
         const include = [];
 
-        // SuperAdmins can see which admin created the category
         if (req.user && req.user.roles && req.user.roles.includes("superadmin")) {
             include.push({
                 model: User,
                 as: "admin",
-                attributes: ["id", "name", "email", "role"]
+                attributes: ["id", "name", "email"]
             });
         }
 
@@ -748,7 +741,7 @@ exports.getAllSubcategories = async (req, res) => {
             include.push({
                 model: User,
                 as: "admin",
-                attributes: ["id", "name", "email", "role"]
+                attributes: ["id", "name", "email"]
             });
         }
 
@@ -795,7 +788,7 @@ exports.getCategoryById = async (req, res) => {
             include.push({
                 model: User,
                 as: "admin",
-                attributes: ["id", "name", "email", "role"]
+                attributes: ["id", "name", "email"]
             });
         }
 
@@ -823,7 +816,7 @@ exports.getSubcategoryById = async (req, res) => {
             include.push({
                 model: User,
                 as: "admin",
-                attributes: ["id", "name", "email", "role"]
+                attributes: ["id", "name", "email"]
             });
         }
 

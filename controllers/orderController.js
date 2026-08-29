@@ -193,7 +193,10 @@ exports.getOrderDetails = async (req, res, next) => {
         }
 
         // Check authorization (User can only view their own order, Admin/Superadmin can view any from admin panel)
-        if (req.user.roles && req.user.roles.includes("user") && order.userId !== req.user.id) {
+        const roles = req.user.roles || [];
+        const isAdmin = roles.includes("admin") || roles.includes("superadmin");
+
+        if (!isAdmin && order.userId !== req.user.id) {
             return res.status(403).json({ message: "Forbidden: You do not have access to this order" });
         }
 

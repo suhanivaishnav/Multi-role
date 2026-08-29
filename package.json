@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "description": "",
   "main": "app.js",
-  "scripts": {},
+  "scripts": {
+    "start": "node app.js",
+    "migrate": "npx sequelize-cli db:migrate"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -16,7 +19,6 @@
     "joi": "^18.2.5",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.11.0",
-    "mysql": "^2.18.1",
     "mysql2": "^3.23.3",
     "nodemailer": "^9.0.5",
     "sequelize": "^6.37.8",
