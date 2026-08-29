@@ -14,7 +14,6 @@ module.exports = {
         name: "Main Admin",
         email: "admin@gmail.com",
         password: adminPassword,
-        role: "admin",
         status: "Active",
         createdAt: new Date(),
         updatedAt: new Date()
@@ -23,7 +22,6 @@ module.exports = {
         name: "Support Admin",
         email: "support@gmail.com",
         password: supportPassword,
-        role: "admin",
         status: "Active",
         createdAt: new Date(),
         updatedAt: new Date()
@@ -32,7 +30,6 @@ module.exports = {
         name: "Super Admin",
         email: "superadmin@gmail.com",
         password: superAdminPassword,
-        role: "superadmin",
         status: "Active",
         createdAt: new Date(),
         updatedAt: new Date()
@@ -41,6 +38,6 @@ module.exports = {
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.bulkDelete("Users", { role: "admin" }, {});
+    await queryInterface.bulkDelete("Users", { email: ["admin@gmail.com", "support@gmail.com", "superadmin@gmail.com"] }, {});
   }
 };

@@ -57,7 +57,7 @@ exports.getAllCategories = async (req, res) => {
         const categories = await Category.findAll({
             where: whereCondition,
             order: orderClause,
-            ...(req.pagination || {})
+            ...(req.query.pagination || {})
         });
         const count = await Category.count({ where: whereCondition });
         return res.sendPaginated(categories, count);

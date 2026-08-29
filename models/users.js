@@ -62,7 +62,7 @@ module.exports = (sequelize, DataTypes) => {
       },
 
       sellerStatus: {
-        type: DataTypes.ENUM('None', 'Pending', 'Approved', 'Rejected'),
+        type: DataTypes.ENUM('None', 'Pending', 'Approved', 'Rejected', 'Suspended'),
         allowNull: false,
         defaultValue: 'None'
       }

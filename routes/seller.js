@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { authenticateToken, requireRole, validateRegistration, validateUpdate } = require("../middleware/auth");
+const { authenticateToken, requireRole, validateRegistration, validateUpdate, validateProduct } = require("../middleware/auth");
 const sellerController = require("../controllers/sellerController");
 const productController = require("../controllers/productController");
 const paginate = require("../middleware/pagination");
@@ -35,11 +35,11 @@ router.get("/products", paginate, productController.getMyProducts);
 router.get("/products/:id", productController.getProductById);
 
 // POST /sellers/products 
-router.post("/products", productController.createProduct);
+router.post("/products", validateProduct, productController.createProduct);
 
 // PUT|PATCH /sellers/products/:id 
-router.put("/products/:id", productController.updateProduct);
-router.patch("/products/:id", productController.updateProduct);
+router.put("/products/:id", validateProduct, productController.updateProduct);
+router.patch("/products/:id", validateProduct, productController.updateProduct);
 
 // DELETE /sellers/products/:id 
 router.delete("/products/:id", productController.deleteProduct);

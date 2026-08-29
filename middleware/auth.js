@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
+const Joi = require('joi');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -44,6 +45,30 @@ const validateUpdate = (req, res, next) => {
         return res.status(400).json(errors);
     }
 
+    next();
+};
+
+const validateProduct = (req, res, next) => {
+    const Joi = require('joi');
+    const createProductSchema = Joi.object({
+        name: Joi.string().required(),
+        description: Joi.string().optional().allow(''),
+        price: Joi.number().positive().required(),
+        stock: Joi.number().integer().min(0).required(),
+        subcategoryId: Joi.number().integer().required(),
+        status: Joi.string().valid('Pending', 'Active').optional(),
+        sellerId: Joi.number().integer().optional()
+    });
+
+    const { error, value } = createProductSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
+    if (error) {
+        return res.status(400).json({
+            message: "Validation Error",
+            errors: error.details.map(detail => detail.message)
+        });
+    }
+
+    req.body = value;
     next();
 };
 
@@ -122,6 +147,7 @@ const authorize = (...roles) => {
 module.exports = {
     validateRegistration,
     validateUpdate,
+    validateProduct,
     hashPassword,
     comparePassword,
     generateToken,

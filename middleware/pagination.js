@@ -3,7 +3,7 @@ const paginate = (req, res, next) => {
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
     const offset = (page - 1) * limit;
 
-    req.pagination = { limit, offset, page };
+    req.query.pagination = { limit, offset, page };
 
     res.sendPaginated = (
         data,

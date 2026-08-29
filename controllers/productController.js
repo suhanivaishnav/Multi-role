@@ -15,7 +15,7 @@ const getProductIncludes = (includeSeller = true) => {
         includes.unshift({
             model: User,
             as: "seller",
-            attributes: ["id", "name", "email", "phone", "status", "role"]
+            attributes: ["id", "name", "email", "phone", "status"]
         });
     }
 
@@ -24,18 +24,20 @@ const getProductIncludes = (includeSeller = true) => {
 
 // Helper to determine user role category
 const getUserRoleCategory = (user) => {
-    if (!user) return "Guest";
-    const role = (user.roles && user.roles.length > 0 ? user.roles[0].name.toLowerCase() : "");
-    if (role === "admin" || role === "superadmin") {
+    if (!user || !user.roles || user.roles.length === 0) return "Guest";
+
+    const roles = user.roles.map(r => (typeof r === 'string' ? r.toLowerCase() : r.name.toLowerCase()));
+
+    if (roles.includes("superadmin") || roles.includes("admin")) {
         return "Admin";
     }
-    if (role === "seller") {
+    if (roles.includes("seller")) {
         return "Seller";
     }
     return "User";
 };
 
-exports.createProduct = async (req, res) => {
+exports.createProduct = async (req, res, next) => {
     try {
         const userType = getUserRoleCategory(req.user);
         const { name, description, price, stock, subcategoryId, status } = req.body;
@@ -56,6 +58,7 @@ exports.createProduct = async (req, res) => {
         }
 
         if (!name || price === undefined || stock === undefined || !subcategoryId) {
+            // Already caught by schema validation, but left for safety
             return res.status(400).json({
                 message: "Name, price, stock, and subcategoryId are required"
             });
@@ -68,8 +71,8 @@ exports.createProduct = async (req, res) => {
         }
 
         // Verify seller exists and is Active
-        const seller = await User.findByPk(sellerId);
-        if (!seller || !(seller.roles && seller.roles.some(r => r.name === "seller"))) {
+        const seller = await User.findByPk(sellerId, { include: ['roles'] });
+        if (!seller || !(seller.roles && seller.roles.some(r => (typeof r === 'string' ? r : r.name) === "seller"))) {
             return res.status(404).json({ message: `Seller account with ID ${sellerId} not found` });
         }
         if (seller.status !== "Active") {
@@ -107,7 +110,7 @@ exports.createProduct = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to create product",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -154,7 +157,7 @@ exports.getMyProducts = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch products",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -194,7 +197,7 @@ exports.getAllProductsAdmin = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch all products for admin",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -231,7 +234,7 @@ exports.getProductsByCategory = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch category products",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -268,7 +271,7 @@ exports.getProductsBySubcategory = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch subcategory products",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -335,7 +338,7 @@ exports.getAllProducts = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch products",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -368,7 +371,7 @@ exports.getProductById = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to fetch product",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -429,7 +432,7 @@ exports.updateProduct = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to update product",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -454,7 +457,7 @@ exports.approveProduct = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to approve product",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -479,7 +482,7 @@ exports.rejectProduct = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to reject product",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -513,7 +516,7 @@ exports.updateProductStatus = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to update product status",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };
@@ -541,7 +544,7 @@ exports.deleteProduct = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to delete product",
-            error: error.message
+            error: "An internal server error occurred"
         });
     }
 };

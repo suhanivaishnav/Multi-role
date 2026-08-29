@@ -36,7 +36,12 @@ exports.placeOrder = async (req, res) => {
                 return res.status(400).json({ message: "Invalid product ID" });
             }
 
-            const product = await Product.findByPk(item.productId, { transaction: t });
+            if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+                await t.rollback();
+                return res.status(400).json({ message: "Quantity must be a positive integer" });
+            }
+
+            const product = await Product.findByPk(item.productId, { transaction: t, lock: t.LOCK.UPDATE });
 
             if (!product) {
                 await t.rollback();
@@ -87,7 +92,7 @@ exports.placeOrder = async (req, res) => {
     } catch (error) {
         await t.rollback();
         console.error("Place order error:", error);
-        return res.status(500).json({ message: "Failed to Place the order", error: error.message });
+        return res.status(500).json({ message: "Failed to Place the order", error: "An internal server error occurred" });
     }
 };
 
@@ -156,7 +161,7 @@ exports.getMyOrders = async (req, res) => {
         return res.sendPaginated(formattedOrders, orders.count, "orders");
     } catch (error) {
         console.error("Get my orders error:", error);
-        return res.status(500).json({ message: "Server error", error: error.message });
+        return res.status(500).json({ message: "Server error", error: "An internal server error occurred" });
     }
 };
 
@@ -207,7 +212,7 @@ exports.getOrderDetails = async (req, res) => {
         return res.status(200).json({ message: "order", order: orderJSON });
     } catch (error) {
         console.error("Get order details error:", error);
-        return res.status(500).json({ message: "Server error", error: error.message });
+        return res.status(500).json({ message: "Server error", error: "An internal server error occurred" });
     }
 };
 
@@ -299,7 +304,7 @@ exports.updateOrderStatus = async (req, res) => {
         return res.status(200).json({ message: "Order status updated", order: orderJSON });
     } catch (error) {
         console.error("Update order status error:", error);
-        return res.status(500).json({ message: "Server error", error: error.message });
+        return res.status(500).json({ message: "Server error", error: "An internal server error occurred" });
     }
 };
 
@@ -372,7 +377,7 @@ exports.getAllOrders = async (req, res) => {
         return res.sendPaginated(formattedOrders, orders.count, "orders");
     } catch (error) {
         console.error("Get all orders error:", error);
-        return res.status(500).json({ message: "Server error", error: error.message });
+        return res.status(500).json({ message: "Server error", error: "An internal server error occurred" });
     }
 };
 // 7. User: Cancel Order
@@ -415,6 +420,6 @@ exports.cancelOrder = async (req, res) => {
         return res.status(200).json({ message: "Order cancelled successfully" });
     } catch (error) {
         console.error("Cancel order error:", error);
-        return res.status(500).json({ message: "Server error", error: error.message });
+        return res.status(500).json({ message: "Server error", error: "An internal server error occurred" });
     }
 };

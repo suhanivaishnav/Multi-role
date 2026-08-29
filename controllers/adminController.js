@@ -1,4 +1,4 @@
-const { User, Role, Category, Subcategory, Product } = require("../models");
+const { User, Role, Category, Subcategory, Product, sequelize } = require("../models");
 const { Op } = require("sequelize");
 const { sanitizeUser } = require("../helpers/utils");
 const { hashPassword, comparePassword } = require("../middleware/auth");
@@ -112,6 +112,11 @@ exports.suspendSeller = async (req, res) => {
 
         await seller.update({ sellerStatus: "Suspended" });
 
+        const roleRecord = await Role.findOne({ where: { name: "seller" } });
+        if (roleRecord) {
+            await seller.removeRole(roleRecord);
+        }
+
         return res.status(200).json({
             message: "Seller blocked successfully by Admin",
             seller: sanitizeUser(seller)
@@ -178,7 +183,7 @@ exports.getOverview = async (req, res) => {
 exports.getAllAdmins = async (req, res) => {
     try {
         const { search, sortBy, sortOrder } = req.query;
-        const whereCondition = { role: 'admin' };
+        const whereCondition = {};
 
         if (search) {
             whereCondition[Op.or] = [
@@ -196,7 +201,8 @@ exports.getAllAdmins = async (req, res) => {
 
         const admins = await User.findAll({
             where: whereCondition,
-            attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires"] },
+            include: [{ model: Role, as: 'roles', where: { name: 'admin' } }],
+            attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires",] },
             order: orderClause
         });
         return res.status(200).json(admins);
@@ -294,7 +300,7 @@ exports.getAllUsers = async (req, res) => {
     try {
         const { status, withDeleted, search, sortBy, sortOrder } = req.query;
 
-        const whereCondition = { role: "user" };
+        const whereCondition = {};
         if (status) {
             whereCondition.status = status;
         }
@@ -314,6 +320,8 @@ exports.getAllUsers = async (req, res) => {
 
         const { count, rows } = await User.findAndCountAll({
             where: whereCondition,
+            include: [{ model: Role, as: 'roles', where: { name: 'user' } }],
+            distinct: true,
             attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires"] },
             paranoid: withDeleted === "true" ? false : true,
             order: orderClause,
@@ -488,8 +496,26 @@ exports.updateUserRoles = async (req, res) => {
             return res.status(400).json({ message: "One or more provided roles are invalid" });
         }
 
-        // Assign the roles to the user using the Sequelize auto-generated method for Many-to-Many
-        await user.setRoles(dbRoles);
+        // Assign the roles and sync seller status in a transaction
+        const t = await sequelize.transaction();
+        try {
+            await user.setRoles(dbRoles, { transaction: t });
+
+            const hasSellerRole = lowerRoles.includes('seller');
+
+            if (hasSellerRole && user.sellerStatus !== 'Approved') {
+                user.sellerStatus = 'Approved';
+                await user.save({ transaction: t });
+            } else if (!hasSellerRole && user.sellerStatus !== 'None' && user.sellerStatus !== 'Suspended') {
+                user.sellerStatus = 'None';
+                await user.save({ transaction: t });
+            }
+
+            await t.commit();
+        } catch (txError) {
+            await t.rollback();
+            throw txError;
+        }
 
         return res.status(200).json({
             message: "User roles updated successfully",

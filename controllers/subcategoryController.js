@@ -1,4 +1,5 @@
 const { Category, Subcategory } = require("../models");
+const { Op } = require('sequelize');
 
 // CREATE SUBCATEGORY
 exports.createSubcategory = async (req, res) => {
@@ -60,7 +61,7 @@ exports.getAllSubcategories = async (req, res) => {
                     as: "category"
                 }
             ],
-            ...(req.pagination || {})
+            ...(req.query.pagination || {})
         });
 
         const count = await Subcategory.count({ where: whereCondition });
