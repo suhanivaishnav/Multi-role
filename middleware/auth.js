@@ -48,7 +48,7 @@ const validateUpdate = (req, res, next) => {
     next();
 };
 
-const validateProduct = (req, res, next) => {
+const validateCreateProduct = (req, res, next) => {
     const Joi = require('joi');
     const createProductSchema = Joi.object({
         name: Joi.string().required(),
@@ -61,6 +61,30 @@ const validateProduct = (req, res, next) => {
     });
 
     const { error, value } = createProductSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
+    if (error) {
+        return res.status(400).json({
+            message: "Validation Error",
+            errors: error.details.map(detail => detail.message)
+        });
+    }
+
+    req.body = value;
+    next();
+};
+
+const validateUpdateProduct = (req, res, next) => {
+    const Joi = require('joi');
+    const updateProductSchema = Joi.object({
+        name: Joi.string().optional(),
+        description: Joi.string().optional().allow(''),
+        price: Joi.number().positive().optional(),
+        stock: Joi.number().integer().min(0).optional(),
+        subcategoryId: Joi.number().integer().optional(),
+        status: Joi.string().valid('Pending', 'Active').optional(),
+        sellerId: Joi.number().integer().optional()
+    });
+
+    const { error, value } = updateProductSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
     if (error) {
         return res.status(400).json({
             message: "Validation Error",
@@ -147,7 +171,8 @@ const authorize = (...roles) => {
 module.exports = {
     validateRegistration,
     validateUpdate,
-    validateProduct,
+    validateCreateProduct,
+    validateUpdateProduct,
     hashPassword,
     comparePassword,
     generateToken,

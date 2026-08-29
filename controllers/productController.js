@@ -108,14 +108,11 @@ exports.createProduct = async (req, res, next) => {
             product: createdProduct
         });
     } catch (error) {
-        return res.status(500).json({
-            message: "Failed to create product",
-            error: "An internal server error occurred"
-        });
+        next(error);
     }
 };
 
-exports.getMyProducts = async (req, res) => {
+exports.getMyProducts = async (req, res, next) => {
     try {
         const sellerId = req.user.id;
         const { status, categoryId, subcategoryId, search, sortBy, sortOrder } = req.query;
@@ -155,14 +152,11 @@ exports.getMyProducts = async (req, res) => {
 
         return res.sendPaginated(rows, count, "products", { sellerId });
     } catch (error) {
-        return res.status(500).json({
-            message: "Failed to fetch products",
-            error: "An internal server error occurred"
-        });
+        next(error);
     }
 };
 
-exports.getAllProductsAdmin = async (req, res) => {
+exports.getAllProductsAdmin = async (req, res, next) => {
     try {
         const { sellerId, status, categoryId, subcategoryId, search, sortBy, sortOrder } = req.query;
         const whereCondition = {};
@@ -195,14 +189,11 @@ exports.getAllProductsAdmin = async (req, res) => {
 
         return res.sendPaginated(rows, count, "products");
     } catch (error) {
-        return res.status(500).json({
-            message: "Failed to fetch all products for admin",
-            error: "An internal server error occurred"
-        });
+        next(error);
     }
 };
 
-exports.getProductsByCategory = async (req, res) => {
+exports.getProductsByCategory = async (req, res, next) => {
     try {
         const { categoryId } = req.params;
         const { search, sortBy, sortOrder } = req.query;
@@ -232,14 +223,11 @@ exports.getProductsByCategory = async (req, res) => {
 
         return res.sendPaginated(rows, count, "products", { categoryId: Number(categoryId) });
     } catch (error) {
-        return res.status(500).json({
-            message: "Failed to fetch category products",
-            error: "An internal server error occurred"
-        });
+        next(error);
     }
 };
 
-exports.getProductsBySubcategory = async (req, res) => {
+exports.getProductsBySubcategory = async (req, res, next) => {
     try {
         const { subcategoryId } = req.params;
         const { search, sortBy, sortOrder } = req.query;
@@ -269,14 +257,11 @@ exports.getProductsBySubcategory = async (req, res) => {
 
         return res.sendPaginated(rows, count, "products", { subcategoryId: Number(subcategoryId) });
     } catch (error) {
-        return res.status(500).json({
-            message: "Failed to fetch subcategory products",
-            error: "An internal server error occurred"
-        });
+        next(error);
     }
 };
 
-exports.getAllProducts = async (req, res) => {
+exports.getAllProducts = async (req, res, next) => {
     try {
         const {
             categoryId, subcategoryId, search,
@@ -336,14 +321,11 @@ exports.getAllProducts = async (req, res) => {
 
         return res.sendPaginated(rows, count, "products");
     } catch (error) {
-        return res.status(500).json({
-            message: "Failed to fetch products",
-            error: "An internal server error occurred"
-        });
+        next(error);
     }
 };
 
-exports.getProductById = async (req, res) => {
+exports.getProductById = async (req, res, next) => {
     try {
         const userType = getUserRoleCategory(req.user);
         const includeSeller = userType === "Admin" || userType === "Seller";
@@ -369,14 +351,11 @@ exports.getProductById = async (req, res) => {
 
         return res.status(200).json(product);
     } catch (error) {
-        return res.status(500).json({
-            message: "Failed to fetch product",
-            error: "An internal server error occurred"
-        });
+        next(error);
     }
 };
 
-exports.updateProduct = async (req, res) => {
+exports.updateProduct = async (req, res, next) => {
     try {
         const userType = getUserRoleCategory(req.user);
         const product = await Product.findByPk(req.params.id);
@@ -430,14 +409,11 @@ exports.updateProduct = async (req, res) => {
             product: updatedProduct
         });
     } catch (error) {
-        return res.status(500).json({
-            message: "Failed to update product",
-            error: "An internal server error occurred"
-        });
+        next(error);
     }
 };
 
-exports.approveProduct = async (req, res) => {
+exports.approveProduct = async (req, res, next) => {
     try {
         const product = await Product.findByPk(req.params.id);
         if (!product) {
@@ -455,14 +431,11 @@ exports.approveProduct = async (req, res) => {
             product: updatedProduct
         });
     } catch (error) {
-        return res.status(500).json({
-            message: "Failed to approve product",
-            error: "An internal server error occurred"
-        });
+        next(error);
     }
 };
 
-exports.rejectProduct = async (req, res) => {
+exports.rejectProduct = async (req, res, next) => {
     try {
         const product = await Product.findByPk(req.params.id);
         if (!product) {
@@ -480,14 +453,11 @@ exports.rejectProduct = async (req, res) => {
             product: updatedProduct
         });
     } catch (error) {
-        return res.status(500).json({
-            message: "Failed to reject product",
-            error: "An internal server error occurred"
-        });
+        next(error);
     }
 };
 
-exports.updateProductStatus = async (req, res) => {
+exports.updateProductStatus = async (req, res, next) => {
     try {
         const { status } = req.body;
         const validStatuses = ["Active", "Inactive", "Pending", "Rejected"];
@@ -514,14 +484,11 @@ exports.updateProductStatus = async (req, res) => {
             product: updatedProduct
         });
     } catch (error) {
-        return res.status(500).json({
-            message: "Failed to update product status",
-            error: "An internal server error occurred"
-        });
+        next(error);
     }
 };
 
-exports.deleteProduct = async (req, res) => {
+exports.deleteProduct = async (req, res, next) => {
     try {
         const userType = getUserRoleCategory(req.user);
         const product = await Product.findByPk(req.params.id);
@@ -542,9 +509,6 @@ exports.deleteProduct = async (req, res) => {
             message: "Product deleted successfully"
         });
     } catch (error) {
-        return res.status(500).json({
-            message: "Failed to delete product",
-            error: "An internal server error occurred"
-        });
+        next(error);
     }
 };

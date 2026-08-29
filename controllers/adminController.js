@@ -9,7 +9,7 @@ exports.getAdminProfile = async (req, res) => {
             attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires", "deletedAt"] }
         });
 
-        if (!admin || (!(admin.roles && admin.roles.some(r => r.name === "admin")) && !(admin.roles && admin.roles.some(r => r.name === "superadmin")))) {
+        if (!admin) {
             return res.status(404).json({ message: "Admin profile not found" });
         }
 
@@ -27,7 +27,7 @@ exports.updateAdminProfile = async (req, res) => {
         const admin = await User.findByPk(req.user.id, {
             attributes: { exclude: ["deletedAt"] }
         });
-        if (!admin || (!(admin.roles && admin.roles.some(r => r.name === "admin")) && !(admin.roles && admin.roles.some(r => r.name === "superadmin")))) {
+        if (!admin) {
             return res.status(404).json({ message: "Admin profile not found" });
         }
 
@@ -138,7 +138,7 @@ exports.getOverview = async (req, res) => {
             User.count({ include: [{ model: Role, as: 'roles', where: { name: 'admin' } }] }),
             Category.count(),
             Subcategory.count(),
-            User.count({ where: { status: 'Pending' }, include: [{ model: Role, as: 'roles', where: { name: 'seller' } }] }),
+            User.count({ where: { sellerStatus: 'Pending' } }),
             Product.count(),
             Product.count({ where: { status: 'Pending' } })
         ]);
@@ -471,6 +471,10 @@ exports.updateUserRoles = async (req, res) => {
         }
 
         const lowerRoles = roles.map(r => r.toLowerCase());
+        
+        if (!lowerRoles.includes("user")) {
+            lowerRoles.push("user");
+        }
 
         // Security Check: Only a SuperAdmin can assign the 'admin' or 'superadmin' roles
         if (lowerRoles.includes("admin") || lowerRoles.includes("superadmin")) {
@@ -633,9 +637,13 @@ exports.deleteSellerById = async (req, res) => {
             return res.status(404).json({ message: "Seller not found" });
         }
 
-        await seller.destroy();
+        const roleRecord = await Role.findOne({ where: { name: "seller" } });
+        if (roleRecord) {
+            await seller.removeRole(roleRecord);
+        }
+        await seller.update({ sellerStatus: "None" });
 
-        return res.status(200).json({ message: "Seller deleted successfully" });
+        return res.status(200).json({ message: "Seller role removed successfully (base user account preserved)" });
     } catch (error) {
         return res.status(500).json({
             message: "Failed to delete seller",

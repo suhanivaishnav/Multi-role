@@ -119,9 +119,13 @@ exports.deleteSellerProfile = async (req, res) => {
             return res.status(404).json({ message: "Seller profile not found" });
         }
 
-        await seller.destroy();
+        const roleRecord = await Role.findOne({ where: { name: "seller" } });
+        if (roleRecord) {
+            await seller.removeRole(roleRecord);
+        }
+        await seller.update({ sellerStatus: "None" });
 
-        return res.status(200).json({ message: "Seller profile deleted successfully" });
+        return res.status(200).json({ message: "Seller profile deleted successfully (base user account preserved)" });
     } catch (error) {
         return res.status(500).json({
             message: "Failed to delete profile",

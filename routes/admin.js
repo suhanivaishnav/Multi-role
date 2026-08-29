@@ -157,9 +157,6 @@ router.put("/orders/:id/status", orderController.updateOrderStatus);
 router.patch("/orders/:id/status", orderController.updateOrderStatus);
 
 // ─── ADMIN MANAGEMENT (SuperAdmin only) ───────────────────────────────────────
-// NOTE: These wildcard routes must stay at the bottom to prevent collision
-//       with named routes like /profile, /sellers, /users etc.
-
 // GET /admins/ 
 router.get("/", requireRole("SuperAdmin"), paginate, adminController.getAllAdmins);
 
