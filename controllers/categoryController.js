@@ -2,9 +2,9 @@ const { Category, Subcategory } = require("../models");
 const { Op } = require("sequelize");
 
 // CREATE CATEGORY
-exports.createCategory = async (req, res) => {
+exports.createCategory = async (req, res, next) => {
     try {
-        const { name, description } = req.body;
+        const { name, description } = req.body || {};
         if (!name) {
             return res.status(400).json({
                 message: "Category name is required"
@@ -30,10 +30,7 @@ exports.createCategory = async (req, res) => {
             category
         });
     } catch (error) {
-        return res.status(500).json({
-            message: "Failed to create category",
-            error: "An internal server error occurred"
-        });
+        next(error);
     }
 };
 
@@ -57,7 +54,7 @@ exports.getAllCategories = async (req, res) => {
         const categories = await Category.findAll({
             where: whereCondition,
             order: orderClause,
-            ...(req.query.pagination || {})
+            ...(req.pagination || {})
         });
         const count = await Category.count({ where: whereCondition });
         return res.sendPaginated(categories, count);

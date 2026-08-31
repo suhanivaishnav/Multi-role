@@ -61,7 +61,8 @@ exports.getAllSubcategories = async (req, res) => {
                     as: "category"
                 }
             ],
-            ...(req.query.pagination || {})
+            limit: req.pagination ? req.pagination.limit : 10,
+            offset: req.pagination ? req.pagination.offset : 0
         });
 
         const count = await Subcategory.count({ where: whereCondition });

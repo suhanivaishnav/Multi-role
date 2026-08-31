@@ -6,7 +6,7 @@ const { hashPassword, comparePassword } = require("../middleware/auth");
 exports.getAdminProfile = async (req, res) => {
     try {
         const admin = await User.findByPk(req.user.id, {
-            attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires", "deletedAt"] }
+            attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires", "deletedAt", "sellerStatus"] }
         });
 
         if (!admin) {
@@ -25,7 +25,7 @@ exports.getAdminProfile = async (req, res) => {
 exports.updateAdminProfile = async (req, res) => {
     try {
         const admin = await User.findByPk(req.user.id, {
-            attributes: { exclude: ["deletedAt"] }
+            attributes: { exclude: ["deletedAt", "sellerStatus"] }
         });
         if (!admin) {
             return res.status(404).json({ message: "Admin profile not found" });
@@ -74,7 +74,7 @@ exports.approveSeller = async (req, res) => {
     try {
         const sellerId = req.params.id || req.params.sellerId;
 
-        const seller = await User.findByPk(sellerId, { include: ['roles'] });
+        const seller = await User.findByPk(sellerId, { include: ['roles'], attributes: { exclude: ["deletedAt"] } });
 
         // Allow approving if they applied to be a seller (sellerStatus = Pending) or are already a seller
         if (!seller || (seller.sellerStatus === "None" && !(seller.roles && seller.roles.some(r => r.name === "seller")))) {
@@ -103,7 +103,7 @@ exports.approveSeller = async (req, res) => {
 exports.suspendSeller = async (req, res) => {
     try {
         const sellerId = req.params.id || req.params.sellerId;
-        const seller = await User.findByPk(sellerId, { include: ['roles'] });
+        const seller = await User.findByPk(sellerId, { include: ['roles'], attributes: { exclude: ["deletedAt"] } });
 
         // Allowed if they are already an approved seller, or if they applied
         if (!seller || (seller.sellerStatus === "None" && !(seller.roles && seller.roles.some(r => r.name === "seller")))) {
@@ -144,11 +144,10 @@ exports.getOverview = async (req, res) => {
         ]);
 
         const [users, sellers, admins, categories] = await Promise.all([
-            User.findAll({ include: [{ model: Role, as: 'roles', where: { name: 'user' } }], attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires"] }, ...req.query.pagination }),
-            User.findAll({ include: [{ model: Role, as: 'roles', where: { name: 'seller' } }], attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires"] }, ...req.query.pagination }),
-            User.findAll({ include: [{ model: Role, as: 'roles', where: { name: 'admin' } }], attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires"] }, ...req.query.pagination }),
-            Category.findAll({ include: [{ model: Subcategory, as: "subcategories" }], ...req.query.pagination })
-
+            User.findAll({ include: [{ model: Role, as: 'roles', where: { name: 'user' } }], attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires"] }, limit: req.pagination ? req.pagination.limit : 10, offset: req.pagination ? req.pagination.offset : 0 }),
+            User.findAll({ include: [{ model: Role, as: 'roles', where: { name: 'seller' } }], attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires"] }, limit: req.pagination ? req.pagination.limit : 10, offset: req.pagination ? req.pagination.offset : 0 }),
+            User.findAll({ include: [{ model: Role, as: 'roles', where: { name: 'admin' } }], attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires"] }, limit: req.pagination ? req.pagination.limit : 10, offset: req.pagination ? req.pagination.offset : 0 }),
+            Category.findAll({ include: [{ model: Subcategory, as: "subcategories" }], limit: req.pagination ? req.pagination.limit : 10, offset: req.pagination ? req.pagination.offset : 0 }),
         ]);
 
         const overviewData = {
@@ -325,7 +324,8 @@ exports.getAllUsers = async (req, res) => {
             attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires"] },
             paranoid: withDeleted === "true" ? false : true,
             order: orderClause,
-            ...req.query.pagination
+            limit: req.pagination ? req.pagination.limit : 10,
+            offset: req.pagination ? req.pagination.offset : 0
         });
 
         return res.sendPaginated(rows, count, "users");
@@ -556,9 +556,10 @@ exports.getAllSellers = async (req, res) => {
 
         const { count, rows } = await User.findAndCountAll({
             where: whereCondition,
-            attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires"] },
+            attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires", "deletedAt"] },
             order: orderClause,
-            ...req.query.pagination
+            limit: req.pagination ? req.pagination.limit : 10,
+            offset: req.pagination ? req.pagination.offset : 0
         });
 
         return res.sendPaginated(rows, count, "sellers");
@@ -574,7 +575,7 @@ exports.getSellerById = async (req, res) => {
     try {
         const seller = await User.findOne({
             where: { id: req.params.id }, include: [{ model: Role, as: 'roles', where: { name: 'seller' } }],
-            attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires"] }
+            attributes: { exclude: ["password", "resetPasswordToken", "resetPasswordExpires", "deletedAt"] }
         });
 
         if (!seller) {
@@ -655,7 +656,7 @@ exports.deleteSellerById = async (req, res) => {
 exports.restoreSeller = async (req, res) => {
     try {
         const sellerId = req.params.id;
-        const user = await User.findByPk(sellerId, { include: ["roles"] });
+        const user = await User.findByPk(sellerId, { include: ["roles"], attributes: { exclude: ["deletedAt"] } });
 
         if (!user) {
             return res.status(404).json({ message: "User not found" });
@@ -717,7 +718,9 @@ exports.getAllCategories = async (req, res) => {
         const categories = await Category.findAll({
             where: whereCondition,
             include,
-            order: orderClause
+            order: orderClause,
+            limit: req.pagination ? req.pagination.limit : 10,
+            offset: req.pagination ? req.pagination.offset : 0
         });
         return res.status(200).json(categories);
     } catch (error) {
@@ -764,7 +767,7 @@ exports.getAllSubcategories = async (req, res) => {
             where: whereCondition,
             include,
             order: orderClause,
-            ...(req.query.pagination || {})
+            ...(req.pagination || {})
         });
         return res.status(200).json(subcategories);
     } catch (error) {

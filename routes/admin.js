@@ -22,7 +22,7 @@ router.patch("/profile", adminController.updateAdminProfile);
 
 // ─── SELLER MANAGEMENT ────────────────────────────────────────────────────────
 
-// GET /admins/sellers (filter: ?status=Pending)
+// GET /admins/sellers (filter: ?status=Pending) working pagination
 router.get("/sellers", paginate, adminController.getAllSellers);
 
 // GET /admins/sellers/:id 
@@ -52,12 +52,12 @@ router.delete("/sellers/:id", adminController.deleteSellerById);
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
 
-// GET /admins/overview 
+// GET /admins/overview no pagination
 router.get("/overview", paginate, adminController.getOverview);
 
 // ─── CATEGORY MANAGEMENT ──────────────────────────────────────────────────────
 
-// GET /admins/categories 
+// GET /admins/categories working pagination
 router.get("/categories", paginate, adminController.getAllCategories);
 
 // POST /admins/categories 
@@ -75,7 +75,7 @@ router.delete("/categories/:id", categoryController.deleteCategory);
 
 // ─── SUBCATEGORY MANAGEMENT ───────────────────────────────────────────────────
 
-// GET /admins/subcategories 
+// GET /admins/subcategories working pagination
 router.get("/subcategories", paginate, adminController.getAllSubcategories);
 
 // POST /admins/subcategories 
@@ -93,7 +93,7 @@ router.delete("/subcategories/:id", subcategoryController.deleteSubcategory);
 
 // ─── PRODUCT MANAGEMENT ───────────────────────────────────────────────────────
 
-// GET /admins/products   (filters: ?status=Pending, ?sellerId=123)
+// GET /admins/products   (filters: ?status=Pending, ?sellerId=123) working pagination
 router.get("/products", paginate, productController.getAllProductsAdmin);
 
 // GET /admins/products/:id 
@@ -123,7 +123,7 @@ router.delete("/products/:id", productController.deleteProduct);
 
 // ─── USER MANAGEMENT ──────────────────────────────────────────────────────────
 
-// GET /admins/users  (filter: ?status=Active|Blocked, ?withDeleted=true)
+// GET /admins/users  (filter: ?status=Active|Blocked, ?withDeleted=true) pagination working
 router.get("/users", paginate, adminController.getAllUsers);
 
 // GET /admins/users/:id  (supports ?withDeleted=true)

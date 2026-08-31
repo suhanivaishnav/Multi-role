@@ -91,6 +91,9 @@ exports.updateSellerProfile = async (req, res) => {
             if (!currentPassword) {
                 return res.status(400).json({ message: "currentPassword is required to change your password" });
             }
+            if (password === currentPassword) {
+                return res.status(400).json({ message: "the new password should be different than the current password" });
+            }
             const isMatch = await comparePassword(currentPassword, seller.password);
             if (!isMatch) {
                 return res.status(401).json({ message: "Incorrect current password" });

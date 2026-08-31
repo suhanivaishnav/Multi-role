@@ -141,7 +141,7 @@ exports.getMyOrders = async (req, res, next) => {
                 { model: User, as: "user", attributes: ["id", "name", "email"] }
             ],
             order: orderClause,
-            ...req.query.pagination
+            ...req.pagination
         });
 
         // Format orders to handle deleted products
@@ -241,7 +241,7 @@ exports.updateOrderStatus = async (req, res, next) => {
                 }
             ]
         });
-        
+
         if (!order) {
             return res.status(404).json({ message: "Order not found" });
         }
@@ -259,7 +259,7 @@ exports.updateOrderStatus = async (req, res, next) => {
         }
 
         if (order.status === formattedStatus) {
-             return res.status(400).json({ message: `Order is already marked as ${formattedStatus}` });
+            return res.status(400).json({ message: `Order is already marked as ${formattedStatus}` });
         }
 
         const allowedTransitions = {
@@ -272,8 +272,8 @@ exports.updateOrderStatus = async (req, res, next) => {
         };
 
         if (!allowedTransitions[order.status].includes(formattedStatus)) {
-            return res.status(400).json({ 
-                message: `Invalid status transition from ${order.status} to ${formattedStatus}` 
+            return res.status(400).json({
+                message: `Invalid status transition from ${order.status} to ${formattedStatus}`
             });
         }
 
@@ -357,7 +357,7 @@ exports.getAllOrders = async (req, res, next) => {
                 }
             ],
             order: orderClause,
-            ...req.query.pagination
+            ...req.pagination
         });
 
         // Handle deleted products

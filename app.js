@@ -36,8 +36,8 @@ const globalLimiter = rateLimit({
 app.use(globalLimiter);
 app.use("/auth", authRoutes);
 app.use("/products", productRoutes);
-app.use("/category", categoryRoutes);
-app.use("/subcategory", subcategoryRoutes);
+app.use("/categories", categoryRoutes);
+app.use("/subcategories", subcategoryRoutes);
 app.use("/users", userRoutes);
 app.use("/admins", adminRoutes);
 app.use("/sellers", sellerRoutes);

@@ -28,7 +28,7 @@ router.delete("/profile", sellerController.deleteSellerProfile);
 
 // ─── PRODUCT MANAGEMENT ───────────────────────────────────────────────────────
 
-// GET /sellers/products   (filter: ?status=Pending, ?categoryId=5)
+// GET /sellers/products   (filter: ?status=Pending, ?categoryId=5) working pagination
 router.get("/products", paginate, productController.getMyProducts);
 
 // GET /sellers/products/:id 

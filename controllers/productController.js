@@ -146,7 +146,7 @@ exports.getMyProducts = async (req, res, next) => {
             where: whereCondition,
             include: getProductIncludes(false),
             order: orderClause,
-            ...req.query.pagination,
+            ...req.pagination,
             distinct: true
         });
 
@@ -183,7 +183,7 @@ exports.getAllProductsAdmin = async (req, res, next) => {
             where: whereCondition,
             include: getProductIncludes(),
             order: orderClause,
-            ...req.query.pagination,
+            ...req.pagination,
             distinct: true
         });
 
@@ -217,7 +217,7 @@ exports.getProductsByCategory = async (req, res, next) => {
             where: whereCondition,
             include: getProductIncludes(false),
             order: orderClause,
-            ...req.query.pagination,
+            ...req.pagination,
             distinct: true
         });
 
@@ -251,7 +251,7 @@ exports.getProductsBySubcategory = async (req, res, next) => {
             where: whereCondition,
             include: getProductIncludes(false),
             order: orderClause,
-            ...req.query.pagination,
+            ...req.pagination,
             distinct: true
         });
 
@@ -315,7 +315,7 @@ exports.getAllProducts = async (req, res, next) => {
             where: whereCondition,
             include: getProductIncludes(false),
             order,
-            ...req.query.pagination,
+            ...req.pagination,
             distinct: true
         });
 
