@@ -3,6 +3,8 @@ const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 dotenv.config();
 const morgan = require('morgan');
+const helmet = require('helmet');
+const cors = require('cors');
 const logger = require('./helpers/logger');
 const categoryRoutes = require("./routes/category");
 const subcategoryRoutes = require("./routes/subcategory");
@@ -17,6 +19,8 @@ const PORT = process.env.PORT;
 
 const app = express();
 
+app.use(helmet());
+app.use(cors());
 app.use(express.json());
 
 // Use Morgan for HTTP request logging, piped into Winston

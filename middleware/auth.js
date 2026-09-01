@@ -2,64 +2,73 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 const Joi = require('joi');
+const logger = require('../helpers/logger');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
+// Define Joi schemas once at the module level
+const registrationSchema = Joi.object({
+    email: Joi.string().email().required().messages({
+        'string.empty': "A valid email is required",
+        'string.email': "A valid email is required",
+        'any.required': "A valid email is required"
+    }),
+    password: Joi.string().min(6).required().messages({
+        'string.empty': "Password must be at least 6 characters long",
+        'string.min': "Password must be at least 6 characters long",
+        'any.required': "Password must be at least 6 characters long"
+    })
+}).unknown(true);
+
+const updateSchema = Joi.object({
+    email: Joi.string().email().optional().messages({
+        'string.email': "A valid email is required"
+    }),
+    password: Joi.string().min(6).optional().messages({
+        'string.min': "Password must be at least 6 characters long"
+    }),
+    phone: Joi.string().min(10).optional().messages({
+        'string.min': "Phone must be at least 10 characters long"
+    })
+}).unknown(true);
+
+const createProductSchema = Joi.object({
+    name: Joi.string().required(),
+    description: Joi.string().optional().allow(''),
+    price: Joi.number().positive().required(),
+    stock: Joi.number().integer().min(0).required(),
+    subcategoryId: Joi.number().integer().required(),
+    status: Joi.string().valid('Pending', 'Active').optional(),
+    sellerId: Joi.number().integer().optional()
+});
+
+const updateProductSchema = Joi.object({
+    name: Joi.string().optional(),
+    description: Joi.string().optional().allow(''),
+    price: Joi.number().positive().optional(),
+    stock: Joi.number().integer().min(0).optional(),
+    subcategoryId: Joi.number().integer().optional(),
+    status: Joi.string().valid('Pending', 'Active').optional(),
+    sellerId: Joi.number().integer().optional()
+});
+
 const validateRegistration = (req, res, next) => {
-    const { email, password } = req.body;
-    const errors = [];
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email || !emailRegex.test(email)) {
-        errors.push("A valid email is required");
+    const { error } = registrationSchema.validate(req.body, { abortEarly: false });
+    if (error) {
+        return res.status(400).json(error.details.map(detail => detail.message));
     }
-
-    if (!password || password.length < 6) {
-        errors.push("Password must be at least 6 characters long");
-    }
-
-    if (errors.length > 0) {
-        return res.status(400).json(errors);
-    }
-
     next();
 };
 
 const validateUpdate = (req, res, next) => {
-    const { email, phone, password } = req.body;
-    const errors = [];
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (email !== undefined && !emailRegex.test(email)) {
-        errors.push("A valid email is required");
+    const { error } = updateSchema.validate(req.body, { abortEarly: false });
+    if (error) {
+        return res.status(400).json(error.details.map(detail => detail.message));
     }
-
-    if (password !== undefined && password.length < 6) {
-        errors.push("Password must be at least 6 characters long");
-    }
-
-    if (phone !== undefined && phone.trim().length < 10) {
-        errors.push("Phone must be at least 10 characters long");
-    }
-
-    if (errors.length > 0) {
-        return res.status(400).json(errors);
-    }
-
     next();
 };
 
 const validateCreateProduct = (req, res, next) => {
-    const Joi = require('joi');
-    const createProductSchema = Joi.object({
-        name: Joi.string().required(),
-        description: Joi.string().optional().allow(''),
-        price: Joi.number().positive().required(),
-        stock: Joi.number().integer().min(0).required(),
-        subcategoryId: Joi.number().integer().required(),
-        status: Joi.string().valid('Pending', 'Active').optional(),
-        sellerId: Joi.number().integer().optional()
-    });
-
     const { error, value } = createProductSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
     if (error) {
         return res.status(400).json({
@@ -67,23 +76,11 @@ const validateCreateProduct = (req, res, next) => {
             errors: error.details.map(detail => detail.message)
         });
     }
-
     req.body = value;
     next();
 };
 
 const validateUpdateProduct = (req, res, next) => {
-    const Joi = require('joi');
-    const updateProductSchema = Joi.object({
-        name: Joi.string().optional(),
-        description: Joi.string().optional().allow(''),
-        price: Joi.number().positive().optional(),
-        stock: Joi.number().integer().min(0).optional(),
-        subcategoryId: Joi.number().integer().optional(),
-        status: Joi.string().valid('Pending', 'Active').optional(),
-        sellerId: Joi.number().integer().optional()
-    });
-
     const { error, value } = updateProductSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
     if (error) {
         return res.status(400).json({
@@ -91,11 +88,9 @@ const validateUpdateProduct = (req, res, next) => {
             errors: error.details.map(detail => detail.message)
         });
     }
-
     req.body = value;
     next();
 };
-
 
 //Hash a plain text password using bcrypt
 const hashPassword = async (password) => {
@@ -121,11 +116,13 @@ const authenticate = (req, res, next) => {
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
     if (!token) {
+        logger.warn('Authentication token required but not provided');
         return res.status(401).json({ message: 'Authentication token required' });
     }
 
     jwt.verify(token, JWT_SECRET, async (err, decoded) => {
         if (err) {
+            logger.warn(`Token verification failed: ${err.message}`);
             return res.status(403).json({ message: 'Invalid or expired token' });
         }
 

@@ -5,5 +5,6 @@ exports.sanitizeUser = (user) => {
     delete userJson.password;
     delete userJson.resetPasswordToken;
     delete userJson.resetPasswordExpires;
+    delete userJson.deletedAt;
     return userJson;
 };

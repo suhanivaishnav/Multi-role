@@ -97,7 +97,7 @@ exports.forgotPassword = async (req, res) => {
         // Generate a random token
         const resetToken = crypto.randomBytes(32).toString("hex");
 
-        // Hash it before saving to DB
+        // Hash it before saving to DBo0
         const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
 
         // Set expiry for 1 hour from now
@@ -112,7 +112,7 @@ exports.forgotPassword = async (req, res) => {
         try {
             await sendPasswordResetEmail(req.body.email, resetToken);
         } catch (emailError) {
-            console.error("Failed to dispatch email, but token was generated in DB.");
+            logger.error("Failed to dispatch email, but token was generated in DB: " + emailError.message);
         }
 
         return res.status(200).json({
@@ -146,6 +146,7 @@ exports.resetPassword = async (req, res) => {
         });
 
         if (!user) {
+            logger.warn(`Invalid or expired password reset token attempted: ${token}`);
             return res.status(400).json({ message: "Invalid or expired password reset token" });
         }
 

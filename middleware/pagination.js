@@ -22,7 +22,9 @@ const paginate = (req, res, next) => {
                 totalItems: count,
                 totalPages,
                 currentPage: page,
-                limit
+                limit,
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1
             },
             [keyName]: data
         });

@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const logger = require('./logger');
 require('dotenv').config();
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
@@ -37,9 +38,9 @@ const sendPasswordResetEmail = async (toEmail, resetToken) => {
 
     try {
         await transporter.sendMail(mailOptions);
-        console.log(`Email successfully sent to ${toEmail}`);
+        logger.info(`Email successfully sent to ${toEmail}`);
     } catch (error) {
-        console.error(`Error sending email to ${toEmail}:`, error.message);
+        logger.error(`Error sending email to ${toEmail}: ${error.message}`);
         throw new Error('Failed to send email');
     }
 };
@@ -68,9 +69,9 @@ const sendSellerApprovalEmail = async (toEmail, sellerName) => {
 
     try {
         await transporter.sendMail(mailOptions);
-        console.log(`Approval email successfully sent to ${toEmail}`);
+        logger.info(`Approval email successfully sent to ${toEmail}`);
     } catch (error) {
-        console.error(`Error sending approval email to ${toEmail}:`, error.message);
+        logger.error(`Error sending approval email to ${toEmail}: ${error.message}`);
     }
 };
 
@@ -91,9 +92,9 @@ const sendSellerRejectionEmail = async (toEmail, sellerName) => {
 
     try {
         await transporter.sendMail(mailOptions);
-        console.log(`Rejection email successfully sent to ${toEmail}`);
+        logger.info(`Rejection email successfully sent to ${toEmail}`);
     } catch (error) {
-        console.error(`Error sending rejection email to ${toEmail}:`, error.message);
+        logger.error(`Error sending rejection email to ${toEmail}: ${error.message}`);
     }
 };
 
@@ -114,9 +115,9 @@ const sendSellerSuspensionEmail = async (toEmail, sellerName) => {
 
     try {
         await transporter.sendMail(mailOptions);
-        console.log(`Email successfully sent to ${toEmail}`);
+        logger.info(`Email successfully sent to ${toEmail}`);
     } catch (error) {
-        console.error(`Error sending suspension email to ${toEmail}:`, error.message);
+        logger.error(`Error sending suspension email to ${toEmail}: ${error.message}`);
     }
 };
 
@@ -138,9 +139,9 @@ const sendOrderPlacedEmail = async (toEmail, userName, orderId, totalAmount) => 
 
     try {
         await transporter.sendMail(mailOptions);
-        console.log(`Order placed email sent to ${toEmail}`);
+        logger.info(`Order placed email sent to ${toEmail}`);
     } catch (error) {
-        console.error(`Error sending order placed email to ${toEmail}:`, error.message);
+        logger.error(`Error sending order placed email to ${toEmail}: ${error.message}`);
     }
 };
 
@@ -162,9 +163,9 @@ const sendOrderStatusUpdateEmail = async (toEmail, userName, orderId, status) =>
 
     try {
         await transporter.sendMail(mailOptions);
-        console.log(`Order status update email sent to ${toEmail}`);
+        logger.info(`Order status update email sent to ${toEmail}`);
     } catch (error) {
-        console.error(`Error sending order status update email to ${toEmail}:`, error.message);
+        logger.error(`Error sending order status update email to ${toEmail}: ${error.message}`);
     }
 };
 
