@@ -36,6 +36,10 @@ router.patch("/sellers/:id", adminController.updateSellerById);
 router.patch("/sellers/:id/approve", adminController.approveSeller);
 router.put("/sellers/:id/approve", adminController.approveSeller);
 
+// PATCH /admins/sellers/:id/reject
+router.patch("/sellers/:id/reject", adminController.rejectSeller);
+router.put("/sellers/:id/reject", adminController.rejectSeller);
+
 // PATCH /admins/sellers/:id/suspend
 router.patch("/sellers/:id/suspend", adminController.suspendSeller);
 router.put("/sellers/:id/suspend", adminController.suspendSeller);
@@ -143,7 +147,7 @@ router.put("/users/:id/restore", adminController.restoreUser);
 
 // ─── ORDER MANAGEMENT ─────────────────────────────────────────────────────────
 
-// GET /admins/orders
+// GET /admins/orders working pagination
 router.get("/orders", paginate, orderController.getAllOrders);
 
 // GET /admins/orders/:id

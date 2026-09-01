@@ -149,6 +149,11 @@ exports.resetPassword = async (req, res) => {
             return res.status(400).json({ message: "Invalid or expired password reset token" });
         }
 
+        const isSamePassword = await comparePassword(newPassword, user.password);
+        if (isSamePassword) {
+            return res.status(400).json({ message: "New password cannot be same as old password" });
+        }
+
         // Hash the new password
         const hashedPassword = await hashPassword(newPassword);
 

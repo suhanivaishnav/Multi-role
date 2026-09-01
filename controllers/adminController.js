@@ -2,6 +2,7 @@ const { User, Role, Category, Subcategory, Product, sequelize } = require("../mo
 const { Op } = require("sequelize");
 const { sanitizeUser } = require("../helpers/utils");
 const { hashPassword, comparePassword } = require("../middleware/auth");
+const { sendSellerApprovalEmail, sendSellerRejectionEmail, sendSellerSuspensionEmail } = require("../helpers/email");
 
 exports.getAdminProfile = async (req, res) => {
     try {
@@ -88,6 +89,9 @@ exports.approveSeller = async (req, res) => {
             await seller.addRole(roleRecord);
         }
 
+        // Send approval email asynchronously
+        sendSellerApprovalEmail(seller.email, seller.name || "Seller").catch(err => console.error("Email error:", err));
+
         return res.status(200).json({
             message: "Seller approved successfully by Admin",
             seller: sanitizeUser(seller)
@@ -95,6 +99,38 @@ exports.approveSeller = async (req, res) => {
     } catch (error) {
         return res.status(500).json({
             message: "Failed to approve seller",
+            error: "An internal server error occurred"
+        });
+    }
+};
+
+exports.rejectSeller = async (req, res) => {
+    try {
+        const sellerId = req.params.id || req.params.sellerId;
+
+        const seller = await User.findByPk(sellerId, { include: ['roles'], attributes: { exclude: ["deletedAt"] } });
+
+        if (!seller || (seller.sellerStatus === "None" && !(seller.roles && seller.roles.some(r => r.name === "seller")))) {
+            return res.status(404).json({ message: "Seller application not found" });
+        }
+
+        await seller.update({ sellerStatus: "Rejected", status: "Active" });
+
+        const roleRecord = await Role.findOne({ where: { name: "seller" } });
+        if (roleRecord) {
+            await seller.removeRole(roleRecord);
+        }
+
+        // Send rejection email asynchronously
+        sendSellerRejectionEmail(seller.email, seller.name || "Seller").catch(err => console.error("Email error:", err));
+
+        return res.status(200).json({
+            message: "Seller Rejected by Admin",
+            seller: sanitizeUser(seller)
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: "Failed to reject seller",
             error: "An internal server error occurred"
         });
     }
@@ -117,6 +153,9 @@ exports.suspendSeller = async (req, res) => {
             await seller.removeRole(roleRecord);
         }
 
+        // Send suspension email asynchronously
+        sendSellerSuspensionEmail(seller.email, seller.name || "Seller").catch(err => console.error("Email error:", err));
+
         return res.status(200).json({
             message: "Seller blocked successfully by Admin",
             seller: sanitizeUser(seller)
@@ -128,7 +167,6 @@ exports.suspendSeller = async (req, res) => {
         });
     }
 };
-
 
 exports.getOverview = async (req, res) => {
     try {
@@ -476,17 +514,26 @@ exports.updateUserRoles = async (req, res) => {
             lowerRoles.push("user");
         }
 
-        // Security Check: Only a SuperAdmin can assign the 'admin' or 'superadmin' roles
+        const user = await User.findByPk(req.params.id, { include: ['roles'] });
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const isSuperAdmin = req.user && req.user.roles && req.user.roles.includes("superadmin");
+
+        // Security Check 1: Only a SuperAdmin can ASSIGN the 'admin' or 'superadmin' roles
         if (lowerRoles.includes("admin") || lowerRoles.includes("superadmin")) {
-            const isSuperAdmin = req.user && req.user.roles && req.user.roles.includes("superadmin");
             if (!isSuperAdmin) {
                 return res.status(403).json({ message: "Only a SuperAdmin can assign 'admin' or 'superadmin' roles." });
             }
         }
 
-        const user = await User.findByPk(req.params.id);
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
+        // Security Check 2: Only a SuperAdmin can MODIFY the roles of an existing Admin or SuperAdmin
+        const currentUserRoles = user.roles ? user.roles.map(r => r.name.toLowerCase()) : [];
+        if (currentUserRoles.includes("admin") || currentUserRoles.includes("superadmin")) {
+            if (!isSuperAdmin) {
+                return res.status(403).json({ message: "Only a SuperAdmin can modify the roles of an existing Admin or SuperAdmin." });
+            }
         }
 
         // Fetch role records from DB matching the provided names

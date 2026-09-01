@@ -3,10 +3,20 @@ const { Op } = require("sequelize");
 
 // Helper to recalculate and save cart total
 const recalculateCartTotal = async (cart) => {
-    const items = await CartItem.findAll({ where: { cartId: cart.id } });
-    const total = items.reduce((sum, item) => {
-        return sum + parseFloat(item.subtotal);
-    }, 0);
+    const items = await CartItem.findAll({
+        where: { cartId: cart.id },
+        include: [{ model: Product, as: "product", required: false }]
+    });
+
+    let total = 0;
+    for (const item of items) {
+        if (!item.product || item.product.status !== 'Active') {
+            await item.destroy();
+        } else {
+            total += parseFloat(item.subtotal);
+        }
+    }
+
     cart.total = total.toFixed(2);
     await cart.save();
     return parseFloat(cart.total);
@@ -155,12 +165,21 @@ exports.viewCart = async (req, res) => {
             return res.status(200).json({ message: "Your cart is empty", cart: [], total: 0 });
         }
 
+        const hasInvalidItems = cart.cartItems.some(item => !item.product || item.product.status !== 'Active');
+        if (hasInvalidItems) {
+            cart.total = await recalculateCartTotal(cart);
+            cart.cartItems = await CartItem.findAll({
+                where: { cartId: cart.id },
+                include: [{ model: Product, as: "product", attributes: ["id", "name", "description", "price", "stock", "status"] }]
+            });
+        }
+
         const items = cart.cartItems.map((item) => ({
             cartItemId: item.id,
             productId: item.productId,
-            productName: item.product ? item.product.name : "Unknown",
-            productDescription: item.product ? item.product.description : null,
-            productStatus: item.product ? item.product.status : null,
+            productName: item.product.name,
+            productDescription: item.product.description,
+            productStatus: item.product.status,
             quantity: item.quantity,
             price: parseFloat(item.price),
             subtotal: parseFloat(item.subtotal)
@@ -451,10 +470,23 @@ exports.checkoutGate = async (req, res) => {
             return res.status(200).json({ message: "Your cart is empty. Add items before checking out.", items: [], total: 0 });
         }
 
+        const hasInvalidItems = cart.cartItems.some(item => !item.product || item.product.status !== 'Active');
+        if (hasInvalidItems) {
+            cart.total = await recalculateCartTotal(cart);
+            cart.cartItems = await CartItem.findAll({
+                where: { cartId: cart.id },
+                include: [{ model: Product, as: "product", attributes: ["id", "name", "price", "stock", "status"] }]
+            });
+        }
+
+        if (cart.cartItems.length === 0) {
+            return res.status(400).json({ message: "All items in your cart are no longer available.", items: [], total: 0 });
+        }
+
         const items = cart.cartItems.map((item) => ({
             cartItemId: item.id,
             productId: item.productId,
-            productName: item.product ? item.product.name : "Unknown",
+            productName: item.product.name,
             quantity: item.quantity,
             price: parseFloat(item.price),
             subtotal: parseFloat(item.subtotal)

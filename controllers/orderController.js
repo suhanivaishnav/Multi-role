@@ -1,5 +1,6 @@
 const { Order, OrderItem, Product, User, sequelize } = require("../models");
 const { Op } = require("sequelize");
+const { sendOrderPlacedEmail, sendOrderStatusUpdateEmail } = require("../helpers/email");
 
 const restoreOrderStock = async (orderItems, transaction) => {
     for (const item of orderItems) {
@@ -91,6 +92,11 @@ exports.placeOrder = async (req, res, next) => {
         await OrderItem.bulkCreate(finalOrderItems, { transaction: t });
 
         await t.commit();
+
+        const user = await User.findByPk(userId);
+        if (user) {
+            sendOrderPlacedEmail(user.email, user.name || "Customer", order.id, totalAmount).catch(err => console.error("Email error:", err));
+        }
 
         return res.status(201).json({ message: "Order placed successfully", order });
 
@@ -292,6 +298,10 @@ exports.updateOrderStatus = async (req, res, next) => {
             throw err;
         }
 
+        if (order.user) {
+            sendOrderStatusUpdateEmail(order.user.email, order.user.name || "Customer", order.id, formattedStatus).catch(err => console.error("Email error:", err));
+        }
+
         const orderJSON = order.toJSON();
         if (orderJSON.orderItems) {
             orderJSON.orderItems = orderJSON.orderItems.map(item => {
@@ -394,6 +404,7 @@ exports.cancelOrder = async (req, res, next) => {
         const order = await Order.findOne({
             where: { id: orderId, userId: req.user.id },
             include: [
+                { model: User, as: "user", attributes: ["id", "name", "email"] },
                 {
                     model: OrderItem,
                     as: "orderItems"
@@ -418,6 +429,10 @@ exports.cancelOrder = async (req, res, next) => {
         } catch (err) {
             await t.rollback();
             throw err;
+        }
+
+        if (order.user) {
+            sendOrderStatusUpdateEmail(order.user.email, order.user.name || "Customer", order.id, "Cancelled").catch(err => console.error("Email error:", err));
         }
 
         return res.status(200).json({ message: "Order cancelled successfully" });
