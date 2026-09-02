@@ -17,28 +17,12 @@ exports.placeOrder = async (req, res, next) => {
     const { items, shippingAddress, paymentMethod } = req.body;
     const userId = req.user.id;
 
-    if (!shippingAddress || !paymentMethod) {
-        return res.status(400).json({ message: "Shipping address and payment method both are required" });
-    }
-
-    if (!items || !items.length) {
-        return res.status(400).json({ message: "Order items cannot be empty" });
-    }
-
-    // Basic format validation before hitting DB or opening transactions
-    for (let item of items) {
-        if (!item.productId || isNaN(item.productId)) {
-            return res.status(400).json({ message: "Invalid product ID" });
-        }
-        if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
-            return res.status(400).json({ message: "Quantity must be a positive integer" });
-        }
-    }
 
     const t = await sequelize.transaction();
     try {
         let totalAmount = 0;
         const orderItemsData = [];
+        const emailItems = [];
 
         // Validate products with id and check the stock and calculate total
         for (let item of items) {
@@ -68,6 +52,11 @@ exports.placeOrder = async (req, res, next) => {
                 price: product.price
             });
 
+            emailItems.push({
+                name: product.name,
+                description: `Quantity: ${item.quantity} | Price: $${product.price}`
+            });
+
             // Decrease stock when the order placed
             product.stock -= item.quantity;
             await product.save({ transaction: t });
@@ -92,18 +81,23 @@ exports.placeOrder = async (req, res, next) => {
         await OrderItem.bulkCreate(finalOrderItems, { transaction: t });
 
         await t.commit();
+    } catch (error) {
+        if (!t.finished) {
+            await t.rollback();
+        }
+        return next(error);
+    }
 
+    try {
         const user = await User.findByPk(userId);
         if (user) {
-            sendOrderPlacedEmail(user.email, user.name || "Customer", order.id, totalAmount).catch(err => console.error("Email error:", err));
+            sendOrderPlacedEmail(user.email, user.name || "Customer", order.id, totalAmount, emailItems).catch(err => console.error("Email error:", err));
         }
-
-        return res.status(201).json({ message: "Order placed successfully", order });
-
-    } catch (error) {
-        await t.rollback();
-        next(error);
+    } catch (err) {
+        console.error("Error fetching user or sending email:", err);
     }
+
+    return res.status(201).json({ message: "Order placed successfully", order });
 };
 
 // 2. View My Orders

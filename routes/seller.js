@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const { authenticateToken, requireRole, validateRegistration, validateUpdate, validateCreateProduct, validateUpdateProduct } = require("../middleware/auth");
+const { authenticateToken, requireRole } = require("../middleware/auth");
+const { validateRequest } = require("../middleware/validate");
 const sellerController = require("../controllers/sellerController");
 const productController = require("../controllers/productController");
 const paginate = require("../middleware/pagination");
@@ -8,8 +9,8 @@ const paginate = require("../middleware/pagination");
 // ─── PUBLIC ROUTES (no auth required) ────────────────────────────────────────
 
 // POST /sellers/register
-router.post("/register", validateRegistration, sellerController.registerSeller);
-router.post("/", validateRegistration, sellerController.registerSeller);
+router.post("/register", validateRequest('user.registration'), sellerController.registerSeller);
+router.post("/", validateRequest('user.registration'), sellerController.registerSeller);
 
 // ─── BASELINE: All routes below require a valid token + Seller role ───────────
 router.use(authenticateToken, requireRole("Seller"));
@@ -20,8 +21,8 @@ router.use(authenticateToken, requireRole("Seller"));
 router.get("/profile", sellerController.getSellerProfile);
 
 // PUT|PATCH /sellers/profile 
-router.put("/profile", validateUpdate, sellerController.updateSellerProfile);
-router.patch("/profile", validateUpdate, sellerController.updateSellerProfile);
+router.put("/profile", validateRequest('user.update'), sellerController.updateSellerProfile);
+router.patch("/profile", validateRequest('user.update'), sellerController.updateSellerProfile);
 
 // DELETE /sellers/profile 
 router.delete("/profile", sellerController.deleteSellerProfile);
@@ -35,11 +36,11 @@ router.get("/products", paginate, productController.getMyProducts);
 router.get("/products/:id", productController.getProductById);
 
 // POST /sellers/products 
-router.post("/products", validateCreateProduct, productController.createProduct);
+router.post("/products", validateRequest('product.create'), productController.createProduct);
 
 // PUT|PATCH /sellers/products/:id 
-router.put("/products/:id", validateUpdateProduct, productController.updateProduct);
-router.patch("/products/:id", validateUpdateProduct, productController.updateProduct);
+router.put("/products/:id", validateRequest('product.update'), productController.updateProduct);
+router.patch("/products/:id", validateRequest('product.update'), productController.updateProduct);
 
 // DELETE /sellers/products/:id 
 router.delete("/products/:id", productController.deleteProduct);

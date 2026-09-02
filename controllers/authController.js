@@ -10,20 +10,13 @@ const { sanitizeUser } = require("../helpers/utils");
 exports.loginUser = async (req, res) => {
     try {
         const { email, password, guestCart } = req.body;
-
-        if (!email || !password) {
-            return res.status(400).json({ message: "Email and password are required" });
-        }
-
         const user = await User.findOne({ where: { email }, include: ['roles'] });
         if (!user) {
             return res.status(401).json({ message: "Invalid email or password" });
         }
-
         if (user.status === "Blocked") {
             return res.status(403).json({ message: "Account is blocked" });
         }
-
         if (user.status === "Pending") {
             return res.status(403).json({ message: "Account is pending approval" });
         }
@@ -84,9 +77,7 @@ exports.logoutUser = async (req, res) => {
 exports.forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
-        if (!email) {
-            return res.status(400).json({ message: "Email is required" });
-        }
+
 
         const user = await User.findOne({ where: { email } });
         if (!user) {
@@ -97,7 +88,7 @@ exports.forgotPassword = async (req, res) => {
         // Generate a random token
         const resetToken = crypto.randomBytes(32).toString("hex");
 
-        // Hash it before saving to DBo0
+        // Hash it before saving to DB
         const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
 
         // Set expiry for 1 hour from now
@@ -131,9 +122,6 @@ exports.resetPassword = async (req, res) => {
         const { token } = req.params;
         const { newPassword } = req.body;
 
-        if (!token || !newPassword) {
-            return res.status(400).json({ message: "Token and new password are required" });
-        }
 
         // Hash the incoming token to compare with the one in DB
         const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
